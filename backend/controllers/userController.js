@@ -3,6 +3,8 @@ const { getData, saveData } = require("../mockDb");
 const User = require("../models/userModel");
 const Team = require("../models/teamModel");
 const Attendance = require("../models/attendanceModel");
+const bcrypt = require("bcryptjs");
+
 
 const createUser = async (req, res) => {
   try {
@@ -11,12 +13,20 @@ const createUser = async (req, res) => {
     // MOCK DB MODE
     if (!process.env.MONGO_URI) {
         const db = getData();
-        const newUser = { id: "user_" + Date.now(), username, password };
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = { 
+            id: "user_" + Date.now(), 
+            username, 
+            password: hashedPassword,
+            name: "MNREGA Admin",
+            role: "Supervisor"
+        };
         db.users = db.users || [];
         db.users.push(newUser);
         saveData(db);
         return res.json({ message: "User saved successfully to Mock DB" });
     }
+
 
     // MONGOOSE MODE
     const newUser = new User({ username, password });
@@ -141,11 +151,13 @@ const changePassword = async (req, res) => {
             const admin = db.users.find(u => u.username === 'admin');
             
             if (!admin) return res.status(404).json({ error: "Admin user not found" });
-            if (admin.password !== currentPassword) {
+            
+            const isMatch = await bcrypt.compare(currentPassword, admin.password);
+            if (!isMatch) {
                 return res.status(400).json({ error: "Current password incorrect" });
             }
 
-            admin.password = newPassword;
+            admin.password = await bcrypt.hash(newPassword, 10);
             saveData(db);
             return res.json({ message: "Password updated successfully in Mock DB" });
         }
@@ -153,14 +165,15 @@ const changePassword = async (req, res) => {
         const admin = await User.findOne({ username: 'admin' });
         if (!admin) return res.status(404).json({ error: "Admin user not found" });
         
-        // Use a simple comparison for now, or use bcrypt if it was set up
-        if (admin.password !== currentPassword) {
+        const isMatch = await admin.comparePassword(currentPassword);
+        if (!isMatch) {
             return res.status(400).json({ error: "Current password incorrect" });
         }
 
-        admin.password = newPassword;
+        admin.password = newPassword; // Mongoose middleware will hash this
         await admin.save();
         res.json({ message: "Password updated successfully in MongoDB" });
+
 
     } catch (error) {
         console.error(error);

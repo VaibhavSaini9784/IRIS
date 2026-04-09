@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+
 
 const DB_PATH = path.join(__dirname, 'db.json');
 
@@ -29,8 +31,23 @@ const initialData = {
 };
 
 if (!fs.existsSync(DB_PATH)) {
+  // Hash the default admin password 'admin123'
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync("admin123", salt);
+  
+  initialData.users = [
+    {
+      id: "user_admin",
+      username: "admin",
+      password: hash,
+      name: "System Administrator",
+      role: "Super Admin"
+    }
+  ];
+  
   fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
 }
+
 
 const getData = () => JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
 const saveData = (data) => fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));

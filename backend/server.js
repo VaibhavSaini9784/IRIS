@@ -11,6 +11,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Log requests with more detail
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+    });
+    next();
+});
+
+
 // MongoDB connect (Dynamic based on .env)
 if (process.env.MONGO_URI) {
     mongoose.connect(process.env.MONGO_URI)
@@ -25,7 +36,17 @@ if (process.env.MONGO_URI) {
 app.use("/api", userRoutes);
 app.use("/api", teamRoutes);
 
+// Global Error Handler (Ensures all errors return JSON instead of HTML)
+app.use((err, req, res, next) => {
+    console.error("❌ GLOBAL ERROR:", err.message);
+    res.status(err.status || 500).json({
+        error: err.message || "Internal Server Error",
+        path: req.url
+    });
+});
+
 const PORT = 4000;
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
