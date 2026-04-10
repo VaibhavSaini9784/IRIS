@@ -61,6 +61,22 @@
           "irisClassLabel": "VS"
         }
       ]
+    },
+    {
+      "id": "team_1775797044264",
+      "teamName": "Crew A",
+      "workLocation": "Jaipur, Rajasthan",
+      "workDescription": "",
+      "supervisor": "Rajesh Kumar",
+      "workers": [
+        {
+          "id": "1775797035080",
+          "name": "Sumit",
+          "aadhaarId": "123412341234",
+          "irisClassLabel": "Sumit",
+          "_id": "worker_8kgfbejl4"
+        }
+      ]
     }
   ],
   "attendances": [
@@ -71,7 +87,23 @@
       "date": "2026-04-09T11:38:39.694Z",
       "confidence": 1,
       "status": "present"
+    },
+    {
+      "id": "att_1775796506041",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_6",
+      "date": "2026-04-10T04:48:26.041Z",
+      "confidence": 1,
+      "status": "present"
     }
   ],
-  "users": []
+  "users": [
+    {
+      "id": "user_admin",
+      "username": "admin",
+      "password": "$2b$10$oIeLyQFpLjnZQARP4TVYSubOMdwHZhf7b9Ym/R8V/YTh8IXnPo26K",
+      "name": "System Administrator",
+      "role": "MNREGA Supervisor"
+    }
+  ]
 }
