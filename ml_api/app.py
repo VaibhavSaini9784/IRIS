@@ -1,110 +1,261 @@
+# from flask import Flask, request, jsonify
+# from flask_cors import CORS
+# import numpy as np
+# import cv2
+# from tensorflow.keras.models import load_model
+
+# app = Flask(__name__)
+# CORS(app, resources={r"/*": {"origins": "*"}})
+
+# @app.after_request
+# def add_cors_headers(response):
+#     response.headers.add('Access-Control-Allow-Origin', '*')
+#     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+#     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+#     return response
+
+# model = load_model("iris_model.h5")
+
+# class_labels = ['Shrey', 'Stuti_Agarwal', 'Sumit', 'Taruna', 'UmangJoshi', 'VC', 'Vaibhav_Chhipa', 'VS', 'Vansh']
+
+# @app.route("/labels", methods=["GET"])
+# def get_labels():
+#     return jsonify({"labels": class_labels})
+
+# IMG_SIZE = 128
+
+# eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+
+# def find_and_crop_eye(img_gray):
+#     # Standard Eye Detection
+#     eyes = eye_cascade.detectMultiScale(img_gray, scaleFactor=1.05, minNeighbors=7, minSize=(60, 60))
+#     if len(eyes) == 0:
+#         return None
+    
+#     # Take the largest detected eye
+#     largest_eye = max(eyes, key=lambda rect: rect[2] * rect[3])
+#     ex, ey, ew, eh = largest_eye
+    
+#     # Use 25% margin to match training data framing (Whole Eye region)
+#     margin = int(ew * 0.25)
+#     y1 = max(0, ey - margin)
+#     y2 = min(img_gray.shape[0], ey + eh + margin)
+#     x1 = max(0, ex - margin)
+#     x2 = min(img_gray.shape[1], ex + ew + margin)
+#     crop = img_gray[y1:y2, x1:x2]
+
+#     # Save debug crop for transparency
+#     try:
+#         cv2.imwrite("last_debug_scan.png", crop)
+#         print("✅ SUCCESS: Rectangular Eye Crop saved to 'last_debug_scan.png'")
+#     except:
+#         pass
+        
+#     return crop
+
+# def preprocess_image(img):
+#     # Use CUBIC interpolation for sharper iris details
+#     img = cv2.resize(img, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_CUBIC)
+
+#     if len(img.shape) == 2:
+#         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+#         img = clahe.apply(img)
+#         img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+#     # Use 0 to 1 scaling (Standard Iris Normalization)
+#     img = img / 255.0
+#     return img
+
+# @app.route("/predict", methods=["POST"])
+# def predict():
+#     if 'image' not in request.files:
+#         return jsonify({"error": "No image uploaded"}), 400
+
+#     file = request.files['image']
+
+#     file_bytes = np.frombuffer(file.read(), np.uint8)
+#     img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
+
+#     if img is None:
+#         return jsonify({"error": "Invalid image format"}), 400
+
+#     cropped_eye = find_and_crop_eye(img)
+#     if cropped_eye is None:
+#         print("No eye detected")
+#     else:
+#         print("Eye detected and cropped")
+#         img = cropped_eye
+
+#     img = preprocess_image(img)
+#     img = np.expand_dims(img, axis=0)
+
+#     preds = model.predict(img)
+#     print(f"DEBUG: Raw Scores: {[f'{label}: {score:.4f}' for label, score in zip(class_labels, preds[0])]}")
+    
+#     class_idx = np.argmax(preds[0])
+#     confidence = float(preds[0][class_idx])
+    
+#     # SAFETY GUARD: If confidence is too low or it defaults to Shrey (Index 0) on a bad scan
+#     if confidence < 0.8:
+#         return jsonify({"person": "Unknown", "confidence": confidence})
+
+#     person = class_labels[class_idx]
+#     print("Returning:", person)
+#     return jsonify({
+#         "person": person,
+#         "confidence": confidence
+#     })
+
+# if __name__ == "__main__":
+#     app.run(port=5000)
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import cv2
+import os
+import random
 from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
-@app.after_request
-def add_cors_headers(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
-model = load_model("iris_model.h5")
-
-class_labels = ['Shrey', 'Stuti_Agarwal', 'Sumit', 'Taruna', 'UmangJoshi', 'VC', 'Vaibhav_Chhipa', 'VS', 'Vansh']
-
-@app.route("/labels", methods=["GET"])
-def get_labels():
-    return jsonify({"labels": class_labels})
-
+# =========================
+# 🔥 CONFIG
+# =========================
+MODEL_PATH = "iris_model.h5"
+UPLOADS_FOLDER = "uploads"
 IMG_SIZE = 128
 
-eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+# Load model
+model = load_model(MODEL_PATH)
 
-def find_and_crop_eye(img_gray):
-    # Standard Eye Detection
-    eyes = eye_cascade.detectMultiScale(img_gray, scaleFactor=1.05, minNeighbors=7, minSize=(60, 60))
-    if len(eyes) == 0:
-        return None
-    
-    # Take the largest detected eye
-    largest_eye = max(eyes, key=lambda rect: rect[2] * rect[3])
-    ex, ey, ew, eh = largest_eye
-    
-    # Use 25% margin to match training data framing (Whole Eye region)
-    margin = int(ew * 0.25)
-    y1 = max(0, ey - margin)
-    y2 = min(img_gray.shape[0], ey + eh + margin)
-    x1 = max(0, ex - margin)
-    x2 = min(img_gray.shape[1], ex + ew + margin)
-    crop = img_gray[y1:y2, x1:x2]
+# Class labels (MUST match training)
+class_labels = [
+    'Shrey',
+    'Stuti_Agarwal',
+    'Sumit',
+    'Taruna',
+    'UmangJoshi',
+    'VC',
+    'VS',
+    'Vaibhav_Chhipa',
+    'Vansh'
+]
 
-    # Save debug crop for transparency
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+UPLOADS_FOLDER = os.path.abspath(
+    os.path.join(BASE_DIR, "../backend/uploads")
+)
+
+print("📂 Uploads Path:", UPLOADS_FOLDER)
+print("✅ Exists:", os.path.exists(UPLOADS_FOLDER))
+
+# =========================
+# 🔥 GET IMAGE FROM UPLOADS
+# =========================
+def get_sample_image(person_name):
     try:
-        cv2.imwrite("last_debug_scan.png", crop)
-        print("✅ SUCCESS: Rectangular Eye Crop saved to 'last_debug_scan.png'")
-    except:
-        pass
-        
-    return crop
+        files = os.listdir(UPLOADS_FOLDER)
 
+        print("📁 All files:", files)
+
+        # 🔥 Filter matching files
+        matched = [f for f in files if person_name in f]
+
+        print("🔍 Matched files:", matched)
+
+        if not matched:
+            print("❌ No match found for:", person_name)
+            return None
+
+        # Pick random image
+        chosen = random.choice(matched)
+
+        full_path = os.path.join(UPLOADS_FOLDER, chosen)
+
+        print("✅ Selected image:", full_path)
+
+        return full_path
+
+    except Exception as e:
+        print("❌ Error reading uploads:", e)
+        return None
+
+
+# =========================
+# 🔥 PREPROCESS (same as training)
+# =========================
 def preprocess_image(img):
-    # Use CUBIC interpolation for sharper iris details
-    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_CUBIC)
+    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
 
     if len(img.shape) == 2:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         img = clahe.apply(img)
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 
-    # Use 0 to 1 scaling (Standard Iris Normalization)
-    img = img / 255.0
+    img = img.astype("float32") / 255.0
     return img
 
+
+# =========================
+# 🔥 PREDICT ROUTE
+# =========================
 @app.route("/predict", methods=["POST"])
 def predict():
-    if 'image' not in request.files:
-        return jsonify({"error": "No image uploaded"}), 400
 
-    file = request.files['image']
+    person_name = request.form.get("person")
 
-    file_bytes = np.frombuffer(file.read(), np.uint8)
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
+    if not person_name:
+        return jsonify({"error": "No person selected"}), 400
+
+    # 🔥 Get stored dataset image
+    img_path = get_sample_image(person_name)
+
+    if img_path is None:
+        return jsonify({"error": f"No image found for {person_name}"}), 400
+
+    print("📂 Using image:", img_path)
+
+    # Read image
+    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
     if img is None:
-        return jsonify({"error": "Invalid image format"}), 400
+        return jsonify({"error": "Failed to read image"}), 500
 
-    cropped_eye = find_and_crop_eye(img)
-    if cropped_eye is None:
-        print("No eye detected")
-    else:
-        print("Eye detected and cropped")
-        img = cropped_eye
-
+    # Preprocess
     img = preprocess_image(img)
     img = np.expand_dims(img, axis=0)
 
-    preds = model.predict(img)
-    print(f"DEBUG: Raw Scores: {[f'{label}: {score:.4f}' for label, score in zip(class_labels, preds[0])]}")
-    
-    class_idx = np.argmax(preds[0])
-    confidence = float(preds[0][class_idx])
-    
-    # SAFETY GUARD: If confidence is too low or it defaults to Shrey (Index 0) on a bad scan
-    if confidence < 0.8:
-        return jsonify({"person": "Unknown", "confidence": confidence})
+    # Predict
+    preds = model.predict(img)[0]
 
-    person = class_labels[class_idx]
-    print("Returning:", person)
+    class_idx = np.argmax(preds)
+    confidence = float(preds[class_idx])
+
+    predicted_person = class_labels[class_idx]
+
+    print("🔍 DEBUG:", preds)
+    print("✅ Predicted:", predicted_person)
+
     return jsonify({
-        "person": person,
-        "confidence": confidence
+        "selected": person_name,
+        "predicted": predicted_person,
+        "confidence": round(confidence, 3)
     })
 
+
+# =========================
+# 🔥 GET LABELS
+# =========================
+@app.route("/labels", methods=["GET"])
+def labels():
+    return jsonify({"labels": class_labels})
+
+
+# =========================
+# 🔥 RUN SERVER
+# =========================
 if __name__ == "__main__":
     app.run(port=5000)

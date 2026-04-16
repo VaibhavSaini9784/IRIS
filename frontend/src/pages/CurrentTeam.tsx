@@ -88,53 +88,103 @@ const CurrentTeam = () => {
     return irisScanMode === 'capture' ? capturedIrisImage : uploadedIrisImage;
   };
 
-  const handleIrisVerify = async () => {
-    const irisImageBase64 = getActiveIrisImage();
-    if (!irisImageBase64) {
-      toast({ title: 'Capture iris first', description: 'Please capture iris image to verify.', variant: 'destructive' });
-      return;
-    }
+  // const handleIrisVerify = async () => {
+  //   const irisImageBase64 = getActiveIrisImage();
+  //   if (!irisImageBase64) {
+  //     toast({ title: 'Capture iris first', description: 'Please capture iris image to verify.', variant: 'destructive' });
+  //     return;
+  //   }
 
-    if (!selectedWorker) return;
+  //   if (!selectedWorker) return;
 
-    setIrisVerificationStatus('scanning');
-    setDetectedPerson(null);
+  //   setIrisVerificationStatus('scanning');
+  //   setDetectedPerson(null);
 
-    try {
-      const res = await fetch(irisImageBase64);
-      const blob = await res.blob();
-      const formData = new FormData();
-      formData.append('image', blob, 'iris.png');
+  //   // try {
+  //   //   const res = await fetch(irisImageBase64);
+  //   //   const blob = await res.blob();
+  //   //   const formData = new FormData();
+  //   //   formData.append('image', blob, 'iris.png');
 
-      const response = await fetch('http://localhost:5000/predict', {
-        method: 'POST',
-        body: formData,
-      });
+  //   //   const response = await fetch('http://localhost:5000/predict', {
+  //   //     method: 'POST',
+  //   //     body: formData,
+  //   //   });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'AI verification failed');
+  //   //   const data = await response.json();
+  //   //   if (!response.ok) throw new Error(data.error || 'AI verification failed');
 
-      if (data.person === "Unknown") {
-        setIrisVerificationStatus('failed');
-        toast({ title: 'Person Unknown', description: 'Identity could not be verified. Please try again.', variant: 'destructive' });
-      } else if (data.person !== selectedWorker.irisClassLabel) {
-        setIrisVerificationStatus('failed');
-        setDetectedPerson(data.person);
-        toast({
-          title: 'Identity Mismatch',
-          description: `Detected ${data.person}, but you selected ${selectedWorker.name}. Access Denied.`,
-          variant: 'destructive'
-        });
-      } else {
-        setIrisVerificationStatus('matched');
-        setDetectedPerson(data.person);
-        toast({ title: 'Verification Success', description: `Identity confirmed as ${data.person}.` });
-      }
-    } catch (error: any) {
-      setIrisVerificationStatus('failed');
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    }
-  };
+  //   //   if (data.person === "Unknown") {
+  //   //     setIrisVerificationStatus('failed');
+  //   //     toast({ title: 'Person Unknown', description: 'Identity could not be verified. Please try again.', variant: 'destructive' });
+  //   //   } else if (data.person !== selectedWorker.irisClassLabel) {
+  //   //     setIrisVerificationStatus('failed');
+  //   //     setDetectedPerson(data.person);
+  //   //     toast({
+  //   //       title: 'Identity Mismatch',
+  //   //       description: `Detected ${data.person}, but you selected ${selectedWorker.name}. Access Denied.`,
+  //   //       variant: 'destructive'
+  //   //     });
+  //   //   } else {
+  //   //     setIrisVerificationStatus('matched');
+  //   //     setDetectedPerson(data.person);
+  //   //     toast({ title: 'Verification Success', description: `Identity confirmed as ${data.person}.` });
+  //   //   }
+  //   // } catch (error: any) {
+  //   //   setIrisVerificationStatus('failed');
+  //   //   toast({ title: 'Error', description: error.message, variant: 'destructive' });
+  //   // }
+  //   try {
+  //     const formData = new FormData();
+
+  //     // 🔥 IMPORTANT CHANGE
+  //     formData.append('person', selectedWorker.irisClassLabel);
+
+  //     const response = await fetch('http://localhost:5000/predict', {
+  //       method: 'POST',
+  //       body: formData,
+  //     });
+
+  //     const data = await response.json();
+  //     if (!response.ok) throw new Error(data.error || 'AI verification failed');
+
+  //     if (data.predicted === "Unknown") {
+  //       setIrisVerificationStatus('failed');
+  //       toast({
+  //         title: 'Person Unknown',
+  //         description: 'Identity could not be verified.',
+  //         variant: 'destructive'
+  //       });
+
+  //     } else if (data.predicted !== selectedWorker.irisClassLabel) {
+  //       setIrisVerificationStatus('failed');
+  //       setDetectedPerson(data.predicted);
+
+  //       toast({
+  //         title: 'Identity Mismatch',
+  //         description: `Detected ${data.predicted}, but selected ${selectedWorker.name}`,
+  //         variant: 'destructive'
+  //       });
+
+  //     } else {
+  //       setIrisVerificationStatus('matched');
+  //       setDetectedPerson(data.predicted);
+
+  //       toast({
+  //         title: 'Verification Success',
+  //         description: `Identity confirmed as ${data.predicted}`
+  //       });
+  //     }
+
+  //   } catch (error) {
+  //     setIrisVerificationStatus('failed');
+  //     toast({
+  //       title: 'Error',
+  //       description: error.message,
+  //       variant: 'destructive'
+  //     });
+  //   }
+  // };
 
   const resetVerificationState = () => {
     setIrisVerificationStatus('idle');
@@ -144,6 +194,93 @@ const CurrentTeam = () => {
     setDetectedPerson(null);
     stopStream();
   };
+
+  const handleIrisVerify = async () => {
+  const irisImageBase64 = getActiveIrisImage();
+
+  if (!irisImageBase64) {
+    toast({
+      title: 'Capture iris first',
+      description: 'Please capture iris image to verify.',
+      variant: 'destructive'
+    });
+    return;
+  }
+
+  // 🔥 STRICT CHECK
+  if (!selectedWorker || !selectedWorker.irisClassLabel) {
+    console.error("❌ Worker not selected properly:", selectedWorker);
+
+    toast({
+      title: 'No person selected',
+      description: 'Please select a worker before verification.',
+      variant: 'destructive'
+    });
+
+    return;
+  }
+
+  console.log("✅ Sending person:", selectedWorker.irisClassLabel);
+
+  setIrisVerificationStatus('scanning');
+  setDetectedPerson(null);
+
+  try {
+    const formData = new FormData();
+    formData.append('person', selectedWorker.irisClassLabel);
+
+    const response = await fetch('http://localhost:5000/predict', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    console.log("📦 Backend Response:", data);
+
+    if (!response.ok) throw new Error(data.error || 'AI verification failed');
+
+    if (data.predicted === "Unknown") {
+      setIrisVerificationStatus('failed');
+
+      toast({
+        title: 'Person Unknown',
+        description: 'Identity could not be verified.',
+        variant: 'destructive'
+      });
+
+    } else if (data.predicted !== selectedWorker.irisClassLabel) {
+      setIrisVerificationStatus('failed');
+      setDetectedPerson(data.predicted);
+
+      toast({
+        title: 'Identity Mismatch',
+        description: `Detected ${data.predicted}, but selected ${selectedWorker.name}`,
+        variant: 'destructive'
+      });
+
+    } else {
+      setIrisVerificationStatus('matched');
+      setDetectedPerson(data.predicted);
+
+      toast({
+        title: 'Verification Success',
+        description: `Identity confirmed as ${data.predicted}`
+      });
+    }
+
+  } catch (error) {
+    console.error("❌ Error:", error);
+
+    setIrisVerificationStatus('failed');
+
+    toast({
+      title: 'Error',
+      description: error.message || 'Something went wrong',
+      variant: 'destructive'
+    });
+  }
+};
 
   useEffect(() => {
     resetVerificationState();
@@ -168,6 +305,7 @@ const CurrentTeam = () => {
       formData.append('image', blob, 'iris.png');
       formData.append('teamId', selectedTeam.id);
       formData.append('workerId', selectedWorker._id || (selectedWorker as any).id);
+      formData.append('person', selectedWorker.irisClassLabel);
 
       const response = await fetch('http://localhost:4000/api/mark-attendance', {
         method: 'POST',

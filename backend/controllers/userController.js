@@ -62,42 +62,130 @@ const loginUser = async (req, res) => {
     }
 };
 
+// const markAttendance = async (req, res) => {
+//     try {
+//         const { teamId, workerId } = req.body;
+
+//         if (!teamId || !workerId) {
+//             return res.status(400).json({ error: "teamId and workerId are required" });
+//         }
+
+//         if (!req.file) {
+//             return res.status(400).json({ error: "Image file is required" });
+//         }
+
+//         const result = await predictIris(req.file.buffer);
+//         const { person, confidence } = result;
+
+//         if (person === "Unknown") {
+//             return res.status(400).json({
+//                 message: "User not recognized by iris scan",
+//                 confidence
+//             });
+//         }
+
+//         if (!process.env.MONGO_URI) {
+//             const db = getData();
+//             const team = db.teams.find(t => t.id === teamId);
+//             if (!team) return res.status(404).json({ error: "Team not found" });
+
+//             const worker = team.workers.find(w => w._id === workerId || w.id === workerId);
+//             if (!worker) return res.status(404).json({ error: "Worker not found in team" });
+
+//             if (worker.irisClassLabel !== person) {
+//                 return res.status(400).json({
+//                     message: "Iris does not match the selected worker",
+//                     expected: worker.irisClassLabel,
+//                     detected: person,
+//                     confidence
+//                 });
+//             }
+
+//             const newAttendance = {
+//                 id: "att_" + Date.now(),
+//                 teamId,
+//                 workerId,
+//                 date: new Date().toISOString(),
+//                 mlConfidence: confidence,
+//                 mlMatchedPerson: person,
+//                 status: "present"
+//             };
+
+//             db.attendances = db.attendances || [];
+//             db.attendances.push(newAttendance);
+//             saveData(db);
+
+//             return res.json({
+//                 message: "Attendance marked successfully",
+//                 person,
+//                 confidence,
+//                 attendance: newAttendance
+//             });
+//         }
+
+//         const team = await Team.findById(teamId);
+//         if (!team) return res.status(404).json({ error: "Team not found" });
+
+//         const worker = team.workers.id(workerId);
+//         if (!worker) return res.status(404).json({ error: "Worker not found in team" });
+
+//         if (worker.irisClassLabel !== person) {
+//             return res.status(400).json({
+//                 message: "Iris does not match the selected worker",
+//                 expected: worker.irisClassLabel,
+//                 detected: person,
+//                 confidence
+//             });
+//         }
+
+//         const newAttendance = new Attendance({
+//             teamId,
+//             workerId,
+//             mlConfidence: confidence,
+//             mlMatchedPerson: person,
+//             status: 'present'
+//         });
+
+//         await newAttendance.save();
+
+//         return res.json({
+//             message: "Attendance marked successfully",
+//             person,
+//             confidence,
+//             attendance: newAttendance
+//         });
+
+//     } catch (error) {
+//         console.error("Attendance Error:", error);
+//         res.status(500).json({ error: error.message });
+//     }
+// };
+
 const markAttendance = async (req, res) => {
     try {
-        const { teamId, workerId } = req.body;
+        const { teamId, workerId, person } = req.body;
+
+        console.log("📥 BODY:", req.body);
 
         if (!teamId || !workerId) {
-            return res.status(400).json({ error: "teamId and workerId are required" });
-        }
-
-        if (!req.file) {
-            return res.status(400).json({ error: "Image file is required" });
-        }
-
-        const result = await predictIris(req.file.buffer);
-        const { person, confidence } = result;
-
-        if (person === "Unknown") {
-            return res.status(400).json({
-                message: "User not recognized by iris scan",
-                confidence
-            });
+            return res.status(400).json({ error: "teamId and workerId required" });
         }
 
         if (!process.env.MONGO_URI) {
             const db = getData();
+
             const team = db.teams.find(t => t.id === teamId);
             if (!team) return res.status(404).json({ error: "Team not found" });
 
             const worker = team.workers.find(w => w._id === workerId || w.id === workerId);
-            if (!worker) return res.status(404).json({ error: "Worker not found in team" });
+            if (!worker) return res.status(404).json({ error: "Worker not found" });
 
+            // 🔥 Match with already verified person
             if (worker.irisClassLabel !== person) {
                 return res.status(400).json({
-                    message: "Iris does not match the selected worker",
+                    message: "Iris mismatch",
                     expected: worker.irisClassLabel,
-                    detected: person,
-                    confidence
+                    detected: person
                 });
             }
 
@@ -105,10 +193,8 @@ const markAttendance = async (req, res) => {
                 id: "att_" + Date.now(),
                 teamId,
                 workerId,
-                date: new Date().toISOString(),
-                mlConfidence: confidence,
-                mlMatchedPerson: person,
-                status: "present"
+                status: "present",
+                time: new Date().toISOString()
             };
 
             db.attendances = db.attendances || [];
@@ -118,31 +204,28 @@ const markAttendance = async (req, res) => {
             return res.json({
                 message: "Attendance marked successfully",
                 person,
-                confidence,
                 attendance: newAttendance
             });
         }
 
+        // Mongo version (same logic)
         const team = await Team.findById(teamId);
         if (!team) return res.status(404).json({ error: "Team not found" });
 
         const worker = team.workers.id(workerId);
-        if (!worker) return res.status(404).json({ error: "Worker not found in team" });
+        if (!worker) return res.status(404).json({ error: "Worker not found" });
 
         if (worker.irisClassLabel !== person) {
             return res.status(400).json({
-                message: "Iris does not match the selected worker",
+                message: "Iris mismatch",
                 expected: worker.irisClassLabel,
-                detected: person,
-                confidence
+                detected: person
             });
         }
 
         const newAttendance = new Attendance({
             teamId,
             workerId,
-            mlConfidence: confidence,
-            mlMatchedPerson: person,
             status: 'present'
         });
 
@@ -151,12 +234,11 @@ const markAttendance = async (req, res) => {
         return res.json({
             message: "Attendance marked successfully",
             person,
-            confidence,
             attendance: newAttendance
         });
 
     } catch (error) {
-        console.error("Attendance Error:", error);
+        console.error("❌ Attendance Error:", error);
         res.status(500).json({ error: error.message });
     }
 };
