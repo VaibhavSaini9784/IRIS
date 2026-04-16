@@ -1,12 +1,12 @@
 const { getData, saveData } = require("../mockDb");
 const Team = require("../models/teamModel");
 const Attendance = require("../models/attendanceModel");
+const { getTrainedLabels } = require("../services/mlService");
 
 exports.createTeam = async (req, res) => {
   try {
     const { teamName, workLocation, workDescription, supervisor, workers } = req.body;
     
-    // ================= MOCK DB =================
     if (!process.env.MONGO_URI) {
         const db = getData();
         const newTeam = {
@@ -24,7 +24,6 @@ exports.createTeam = async (req, res) => {
         return res.json({ message: "Team saved successfully to Mock DB", team: newTeam });
     }
 
-    // ================= MONGOOSE =================
     const newTeam = new Team({ teamName, workLocation, workDescription, supervisor, workers });
     await newTeam.save();
 
@@ -42,7 +41,6 @@ exports.getTeams = async (req, res) => {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
     
-    // ================= MOCK DB =================
     if (!process.env.MONGO_URI) {
         const db = getData();
         const teams = db.teams;
@@ -55,7 +53,7 @@ exports.getTeams = async (req, res) => {
 
         const formattedTeams = teams.map(team => {
           const teamObj = { ...team };
-          teamObj.id = teamObj.id; // already has id
+          teamObj.id = teamObj.id;
           teamObj.name = teamObj.teamName;
           teamObj.location = teamObj.workLocation;
           
@@ -77,7 +75,6 @@ exports.getTeams = async (req, res) => {
         return res.json(formattedTeams);
     }
     
-    // ================= MONGOOSE =================
     const teams = await Team.find();
     const attendances = await Attendance.find({
       date: { $gte: startOfDay, $lte: endOfDay }
@@ -122,7 +119,6 @@ exports.getStats = async (req, res) => {
     let todayAttendance = 0;
     let pendingVerifications = 0;
 
-    // ================= MOCK DB =================
     if (!process.env.MONGO_URI) {
         const db = getData();
         activeTeams = db.teams.length;
@@ -141,7 +137,6 @@ exports.getStats = async (req, res) => {
         return res.json({ totalWorkers, activeTeams, todayAttendance, pendingVerifications });
     }
 
-    // ================= MONGOOSE =================
     const teams = await Team.find();
     activeTeams = teams.length;
     
@@ -166,13 +161,11 @@ exports.getStats = async (req, res) => {
 
 exports.getReports = async (req, res) => {
   try {
-    // ================= MOCK DB =================
     if (!process.env.MONGO_URI) {
         const db = getData();
         const teams = db.teams;
         const attendances = db.attendances || [];
         
-        // Enrich attendance with worker and team data
         const reports = attendances.map(att => {
             let workerObj = null;
             let teamObj = null;
@@ -201,11 +194,7 @@ exports.getReports = async (req, res) => {
         return res.json(reports);
     }
 
-    // ================= MONGOOSE =================
     const attendances = await Attendance.find().sort({ date: -1 }).lean();
-    
-    // We would ideally populate, but for simplicity we manually join or ensure fields
-    // Assuming we have workerId, let's fetch teams.
     const teams = await Team.find().lean();
 
     const reports = attendances.map(att => {
@@ -242,7 +231,6 @@ exports.getReports = async (req, res) => {
 
 exports.getRecentActivity = async (req, res) => {
     try {
-        // ================= MOCK DB =================
         if (!process.env.MONGO_URI) {
             const db = getData();
             const teams = db.teams || [];
@@ -250,7 +238,6 @@ exports.getRecentActivity = async (req, res) => {
 
             const activity = [];
 
-            // 1. Process Attendances
             attendances.forEach(att => {
                 let workerName = "Worker";
                 let teamName = "Team";
@@ -270,14 +257,12 @@ exports.getRecentActivity = async (req, res) => {
                 });
             });
 
-            // 2. Process Teams
             teams.forEach(t => {
-                let ts = Date.now(); // default to now
+                let ts = Date.now();
                 if (t.id && t.id.includes('_')) {
                     const parsedTs = parseInt(t.id.split('_')[1]);
                     if (!isNaN(parsedTs)) ts = parsedTs;
                 } else if (t.id && /^[0-9a-fA-F]{24}$/.test(t.id)) {
-                    // It's likely a MongoDB-style ObjectID hex string
                     ts = parseInt(t.id.substring(0, 8), 16) * 1000;
                 }
 
@@ -290,15 +275,13 @@ exports.getRecentActivity = async (req, res) => {
                 });
             });
 
-            // Sort and limit
             const recent = activity
                 .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 8); // Show top 8 for a cleaner dashboard
+                .slice(0, 8);
 
             return res.json(recent);
         }
 
-        // ================= MONGOOSE =================
         const recentAttendances = await Attendance.find().sort({ date: -1 }).limit(10).lean();
         const teams = await Team.find().sort({ createdAt: -1 }).limit(10).lean();
 
@@ -340,5 +323,14 @@ exports.getRecentActivity = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Error fetching activity" });
+    }
+};
+
+exports.getLabels = async (req, res) => {
+    try {
+        const labels = await getTrainedLabels();
+        res.json({ labels });
+    } catch (error) {
+        res.status(500).json({ error: "Error fetching labels" });
     }
 };

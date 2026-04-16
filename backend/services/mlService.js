@@ -1,11 +1,9 @@
 const axios = require("axios");
 const FormData = require("form-data");
 
-// Accepts image Buffer object directly (from multer memoryStorage)
 const predictIris = async (imageBuffer) => {
     try {
         const formData = new FormData();
-        // Append the in-memory buffer as a file to send to Flask ML API
         formData.append("image", imageBuffer, {
             filename: "iris.png",
             contentType: "image/png"
@@ -18,7 +16,6 @@ const predictIris = async (imageBuffer) => {
         );
 
         return response.data;
-
     } catch (error) {
         if (error.response) {
             console.error("ML API Error Response:", error.response.data);
@@ -30,4 +27,14 @@ const predictIris = async (imageBuffer) => {
     }
 };
 
-module.exports = { predictIris };
+const getTrainedLabels = async () => {
+    try {
+        const response = await axios.get("http://127.0.0.1:5000/labels");
+        return response.data.labels;
+    } catch (error) {
+        console.error("Failed to fetch ML labels:", error.message);
+        return ['Shrey', 'Stuti_Agarwal', 'Sumit', 'Taruna', 'UmangJoshi', 'VC', 'Vaibhav_Chhipa', 'VS', 'Vansh'];
+    }
+};
+
+module.exports = { predictIris, getTrainedLabels };

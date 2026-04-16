@@ -5,7 +5,6 @@ const Team = require("../models/teamModel");
 const Attendance = require("../models/attendanceModel");
 const bcrypt = require("bcryptjs");
 
-// ======================= LOGIN (Authenticate user) =======================
 const loginUser = async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -14,7 +13,6 @@ const loginUser = async (req, res) => {
             return res.status(400).json({ error: "Username and password are required" });
         }
 
-        // MOCK DB MODE
         if (!process.env.MONGO_URI) {
             const db = getData();
             const user = (db.users || []).find(u => u.username === username);
@@ -39,7 +37,6 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // MONGOOSE MODE
         const user = await User.findOne({ username });
         if (!user) {
             return res.status(401).json({ error: "Invalid username or password" });
@@ -65,7 +62,6 @@ const loginUser = async (req, res) => {
     }
 };
 
-// ======================= MARK ATTENDANCE =======================
 const markAttendance = async (req, res) => {
     try {
         const { teamId, workerId } = req.body;
@@ -78,7 +74,6 @@ const markAttendance = async (req, res) => {
             return res.status(400).json({ error: "Image file is required" });
         }
 
-        // Use buffer directly from memory storage (no disk required)
         const result = await predictIris(req.file.buffer);
         const { person, confidence } = result;
 
@@ -89,13 +84,12 @@ const markAttendance = async (req, res) => {
             });
         }
 
-        // ======================= MOCK DB LOGIC =======================
         if (!process.env.MONGO_URI) {
             const db = getData();
             const team = db.teams.find(t => t.id === teamId);
             if (!team) return res.status(404).json({ error: "Team not found" });
 
-            const worker = team.workers.find(w => w._id === workerId);
+            const worker = team.workers.find(w => w._id === workerId || w.id === workerId);
             if (!worker) return res.status(404).json({ error: "Worker not found in team" });
 
             if (worker.irisClassLabel !== person) {
@@ -112,7 +106,8 @@ const markAttendance = async (req, res) => {
                 teamId,
                 workerId,
                 date: new Date().toISOString(),
-                confidence,
+                mlConfidence: confidence,
+                mlMatchedPerson: person,
                 status: "present"
             };
 
@@ -128,7 +123,6 @@ const markAttendance = async (req, res) => {
             });
         }
 
-        // ======================= MONGOOSE LOGIC =======================
         const team = await Team.findById(teamId);
         if (!team) return res.status(404).json({ error: "Team not found" });
 
@@ -147,8 +141,9 @@ const markAttendance = async (req, res) => {
         const newAttendance = new Attendance({
             teamId,
             workerId,
-            confidence,
-            status: "present"
+            mlConfidence: confidence,
+            mlMatchedPerson: person,
+            status: 'present'
         });
 
         await newAttendance.save();
@@ -166,7 +161,6 @@ const markAttendance = async (req, res) => {
     }
 };
 
-// ======================= CHANGE PASSWORD =======================
 const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -203,7 +197,7 @@ const changePassword = async (req, res) => {
             return res.status(400).json({ error: "Current password incorrect" });
         }
 
-        admin.password = newPassword; // Mongoose pre-save will hash it
+        admin.password = newPassword;
         await admin.save();
         res.json({ message: "Password updated successfully" });
 

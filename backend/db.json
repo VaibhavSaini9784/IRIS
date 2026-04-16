@@ -77,6 +77,63 @@
           "_id": "worker_8kgfbejl4"
         }
       ]
+    },
+    {
+      "id": "team_1776246809730",
+      "teamName": "Crew A",
+      "workLocation": "Jaipur, Rajasthan",
+      "workDescription": "",
+      "supervisor": "Rajesh Kumar",
+      "workers": [
+        {
+          "_id": "worker_1tvyydocy",
+          "name": "Vaibhav Chhipa",
+          "aadhaarId": "123412341234",
+          "irisClassLabel": "Vaibhav_Chhipa"
+        }
+      ]
+    },
+    {
+      "id": "team_1776247216296",
+      "teamName": "Crew A",
+      "workLocation": "Jaipur, Rajasthan",
+      "workDescription": "",
+      "supervisor": "Rajesh Kumar",
+      "workers": [
+        {
+          "_id": "worker_hgu6ctkjr",
+          "name": "Vaibhav Chhipa ",
+          "aadhaarId": "123412341234",
+          "irisClassLabel": "Vaibhav_Chhipa"
+        },
+        {
+          "_id": "worker_nwsyflqjf",
+          "name": "VS",
+          "aadhaarId": "123412345123",
+          "irisClassLabel": "VS"
+        }
+      ]
+    },
+    {
+      "id": "team_1776263767060",
+      "teamName": "Crew B",
+      "workLocation": "Jaipur, Rajasthan",
+      "workDescription": "",
+      "supervisor": "Rajesh Kumar",
+      "workers": [
+        {
+          "_id": "worker_vwlcz0rhh",
+          "name": "Vaibhav Saini",
+          "aadhaarId": "123412341234",
+          "irisClassLabel": "VS"
+        },
+        {
+          "_id": "worker_frzda3jt5",
+          "name": "Vaibhav Chhipa",
+          "aadhaarId": "123451234123",
+          "irisClassLabel": "Vaibhav_Chhipa"
+        }
+      ]
     }
   ],
   "attendances": [
@@ -94,6 +151,50 @@
       "workerId": "worker_6",
       "date": "2026-04-10T04:48:26.041Z",
       "confidence": 1,
+      "status": "present"
+    },
+    {
+      "id": "att_1775797558487",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_1",
+      "date": "2026-04-10T05:05:58.487Z",
+      "confidence": 0.89,
+      "status": "present"
+    },
+    {
+      "id": "att_1776241025975",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_6",
+      "date": "2026-04-15T08:17:05.975Z",
+      "mlConfidence": 1,
+      "mlMatchedPerson": "Vaibhav_Chhipa",
+      "status": "present"
+    },
+    {
+      "id": "att_1776246744954",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_9",
+      "date": "2026-04-15T09:52:24.954Z",
+      "mlConfidence": 0.935,
+      "mlMatchedPerson": "VS",
+      "status": "present"
+    },
+    {
+      "id": "att_1776247174730",
+      "teamId": "team_1776246809730",
+      "workerId": "worker_1tvyydocy",
+      "date": "2026-04-15T09:59:34.730Z",
+      "mlConfidence": 1,
+      "mlMatchedPerson": "Vaibhav_Chhipa",
+      "status": "present"
+    },
+    {
+      "id": "att_1776263407960",
+      "teamId": "team_1776247216296",
+      "workerId": "worker_nwsyflqjf",
+      "date": "2026-04-15T14:30:07.960Z",
+      "mlConfidence": 0.943,
+      "mlMatchedPerson": "VS",
       "status": "present"
     }
   ],
