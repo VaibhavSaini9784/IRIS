@@ -1,54 +1,73 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import numpy as np
 import cv2
 from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Load model
+@app.after_request
+def add_cors_headers(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 model = load_model("iris_model.h5")
 
-# Class labels (IMPORTANT: match your training order)
-class_labels = ['Shrey', 'Stuti_Agarwal', 'Sumit', 'Taruna', 'UmangJoshi', 'VC', 'VS', 'Vaibhav_Chhipa', 'Vansh']
+class_labels = ['Shrey', 'Stuti_Agarwal', 'Sumit', 'Taruna', 'UmangJoshi', 'VC', 'Vaibhav_Chhipa', 'VS', 'Vansh']
+
+@app.route("/labels", methods=["GET"])
+def get_labels():
+    return jsonify({"labels": class_labels})
 
 IMG_SIZE = 128
 
-# Load OpenCV's pre-trained Haar Cascade for eye detection
 eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
 
 def find_and_crop_eye(img_gray):
-    # Detect eyes
-    eyes = eye_cascade.detectMultiScale(img_gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    # Standard Eye Detection
+    eyes = eye_cascade.detectMultiScale(img_gray, scaleFactor=1.05, minNeighbors=7, minSize=(60, 60))
     if len(eyes) == 0:
         return None
     
-    # Get the largest eye to avoid small background false positives
+    # Take the largest detected eye
     largest_eye = max(eyes, key=lambda rect: rect[2] * rect[3])
-    x, y, w, h = largest_eye
+    ex, ey, ew, eh = largest_eye
     
-    # Add a small breathing margin around the eye for the crop
-    margin = int(w * 0.1)
-    y1 = max(0, y - margin)
-    y2 = min(img_gray.shape[0], y + h + margin)
-    x1 = max(0, x - margin)
-    x2 = min(img_gray.shape[1], x + w + margin)
-    
-    return img_gray[y1:y2, x1:x2]
+    # Use 25% margin to match training data framing (Whole Eye region)
+    margin = int(ew * 0.25)
+    y1 = max(0, ey - margin)
+    y2 = min(img_gray.shape[0], ey + eh + margin)
+    x1 = max(0, ex - margin)
+    x2 = min(img_gray.shape[1], ex + ew + margin)
+    crop = img_gray[y1:y2, x1:x2]
+
+    # Save debug crop for transparency
+    try:
+        cv2.imwrite("last_debug_scan.png", crop)
+        print("✅ SUCCESS: Rectangular Eye Crop saved to 'last_debug_scan.png'")
+    except:
+        pass
+        
+    return crop
 
 def preprocess_image(img):
-    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
+    # Use CUBIC interpolation for sharper iris details
+    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_CUBIC)
 
     if len(img.shape) == 2:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         img = clahe.apply(img)
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 
+    # Use 0 to 1 scaling (Standard Iris Normalization)
     img = img / 255.0
     return img
 
 @app.route("/predict", methods=["POST"])
 def predict():
-
     if 'image' not in request.files:
         return jsonify({"error": "No image uploaded"}), 400
 
@@ -60,38 +79,28 @@ def predict():
     if img is None:
         return jsonify({"error": "Invalid image format"}), 400
 
-    # Auto-crop the eye if it's a wide webcam shot
     cropped_eye = find_and_crop_eye(img)
     if cropped_eye is None:
-        print("⚠️ No eye detected in image (assuming already cropped upload)")
+        print("No eye detected")
     else:
-        print("✅ Eye detected and cropped successfully")
+        print("Eye detected and cropped")
         img = cropped_eye
 
     img = preprocess_image(img)
     img = np.expand_dims(img, axis=0)
 
     preds = model.predict(img)
-
-    class_idx = np.argmax(preds)
-    confidence_raw = float(np.max(preds))
-    confidence = round(confidence_raw, 3)
+    print(f"DEBUG: Raw Scores: {[f'{label}: {score:.4f}' for label, score in zip(class_labels, preds[0])]}")
+    
+    class_idx = np.argmax(preds[0])
+    confidence = float(preds[0][class_idx])
+    
+    # SAFETY GUARD: If confidence is too low or it defaults to Shrey (Index 0) on a bad scan
+    if confidence < 0.8:
+        return jsonify({"person": "Unknown", "confidence": confidence})
 
     person = class_labels[class_idx]
-
-    print("🔍 DEBUG:")
-    print("Predictions:", preds)
-    print("Class:", person)
-    print("Confidence:", confidence)
-
-    if confidence < 0.9:
-        print("👉 Returning UNKNOWN")
-        return jsonify({
-            "person": "Unknown",
-            "confidence": confidence
-        })
-
-    print("👉 Returning:", person)
+    print("Returning:", person)
     return jsonify({
         "person": person,
         "confidence": confidence

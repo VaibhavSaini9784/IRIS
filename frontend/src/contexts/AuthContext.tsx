@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import api from '@/lib/api';
 
 interface User {
 	id: string;
@@ -44,26 +45,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 		setIsInitializing(false);
 	}, []);
 
-	// Simulated login function - replace with actual API call
+	// ✅ Real login - calls backend API
 	const login = async (username: string, password: string): Promise<boolean> => {
-		// Simulate API call delay
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		
-		// Simulated credentials - replace with actual authentication
-		if (username === 'admin' && password === 'password') {
-			const userData = {
-				id: '1',
-				username: 'admin',
-				name: 'राम कुमार शर्मा',
-				role: 'MNREGA Supervisor'
+		try {
+			const { data } = await api.post('/login', { username, password });
+
+			const userData: User = {
+				id: data.user.id,
+				username: data.user.username,
+				name: data.user.name,
+				role: data.user.role
 			};
+
 			setUser(userData);
 			try {
 				localStorage.setItem('authUser', JSON.stringify(userData));
 			} catch {}
 			return true;
+		} catch (error: any) {
+			console.error("Login failed:", error.message);
+			return false;
 		}
-		return false;
 	};
 
 	const logout = () => {

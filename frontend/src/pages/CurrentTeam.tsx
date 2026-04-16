@@ -3,18 +3,19 @@ import Layout from '../components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { useToast } from '../hooks/use-toast';
 import { Users, Scan, CheckCircle2, XCircle, Clock, UserCheck, Camera, Upload, Eye } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Worker {
-  id: string;
+  _id: string;
+  id?: string;
   name: string;
   aadhaarId: string;
   status: 'present' | 'absent' | 'pending';
   lastAttendance?: string;
+  irisClassLabel: string;
 }
 
 interface Team {
@@ -30,19 +31,17 @@ const CurrentTeam = () => {
   const queryClient = useQueryClient();
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
-  
-  // Iris verification states
+
   const [irisVerificationStatus, setIrisVerificationStatus] = useState<'idle' | 'scanning' | 'matched' | 'failed'>('idle');
   const [irisScanMode, setIrisScanMode] = useState<'capture' | 'upload'>('capture');
-  
-  // Camera/preview state for Iris
+  const [detectedPerson, setDetectedPerson] = useState<string | null>(null);
+
   const irisVideoRef = useRef<HTMLVideoElement | null>(null);
   const irisStreamRef = useRef<MediaStream | null>(null);
   const [irisLiveActive, setIrisLiveActive] = useState(false);
   const [capturedIrisImage, setCapturedIrisImage] = useState<string | null>(null);
   const [uploadedIrisImage, setUploadedIrisImage] = useState<string | null>(null);
 
-  // Fetch real teams data
   const { data: teams = [], isLoading } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: async () => {
@@ -52,7 +51,6 @@ const CurrentTeam = () => {
     }
   });
 
-  // Camera helpers
   const startStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
@@ -91,18 +89,51 @@ const CurrentTeam = () => {
   };
 
   const handleIrisVerify = async () => {
-    const irisImage = getActiveIrisImage();
-    if (!irisImage) {
+    const irisImageBase64 = getActiveIrisImage();
+    if (!irisImageBase64) {
       toast({ title: 'Capture iris first', description: 'Please capture iris image to verify.', variant: 'destructive' });
       return;
     }
+
+    if (!selectedWorker) return;
+
     setIrisVerificationStatus('scanning');
-    
-    // Perform verification verify
-    toast({ title: 'Processing iris pattern...', description: 'Extracting features and matching with database.' });
-    await new Promise((r) => setTimeout(r, 1200));
-    setIrisVerificationStatus('matched');
-    toast({ title: 'Verification Success', description: 'Pattern matched securely. Click confirm to mark attendance.' });
+    setDetectedPerson(null);
+
+    try {
+      const res = await fetch(irisImageBase64);
+      const blob = await res.blob();
+      const formData = new FormData();
+      formData.append('image', blob, 'iris.png');
+
+      const response = await fetch('http://localhost:5000/predict', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'AI verification failed');
+
+      if (data.person === "Unknown") {
+        setIrisVerificationStatus('failed');
+        toast({ title: 'Person Unknown', description: 'Identity could not be verified. Please try again.', variant: 'destructive' });
+      } else if (data.person !== selectedWorker.irisClassLabel) {
+        setIrisVerificationStatus('failed');
+        setDetectedPerson(data.person);
+        toast({
+          title: 'Identity Mismatch',
+          description: `Detected ${data.person}, but you selected ${selectedWorker.name}. Access Denied.`,
+          variant: 'destructive'
+        });
+      } else {
+        setIrisVerificationStatus('matched');
+        setDetectedPerson(data.person);
+        toast({ title: 'Verification Success', description: `Identity confirmed as ${data.person}.` });
+      }
+    } catch (error: any) {
+      setIrisVerificationStatus('failed');
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
   };
 
   const resetVerificationState = () => {
@@ -110,20 +141,18 @@ const CurrentTeam = () => {
     setIrisScanMode('capture');
     setCapturedIrisImage(null);
     setUploadedIrisImage(null);
+    setDetectedPerson(null);
     stopStream();
   };
 
   useEffect(() => {
-    // Reset when worker changes
     resetVerificationState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWorker]);
 
   useEffect(() => {
     return () => {
       stopStream();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const markAttendanceMutation = useMutation({
@@ -134,11 +163,11 @@ const CurrentTeam = () => {
 
       const res = await fetch(irisImage);
       const blob = await res.blob();
-      
+
       const formData = new FormData();
       formData.append('image', blob, 'iris.png');
       formData.append('teamId', selectedTeam.id);
-      formData.append('workerId', selectedWorker.id);
+      formData.append('workerId', selectedWorker._id || (selectedWorker as any).id);
 
       const response = await fetch('http://localhost:4000/api/mark-attendance', {
         method: 'POST',
@@ -150,48 +179,45 @@ const CurrentTeam = () => {
       return data;
     },
     onSuccess: (data) => {
-      const finishedWorkerId = selectedWorker?.id;
+      const finishedWorkerId = selectedWorker?._id;
       const finishedTeamId = selectedTeam?.id;
 
       resetVerificationState();
       setSelectedWorker(null);
-      
+
       toast({
         title: 'Attendance Verified ✅',
-        description: `Successfully recorded attendance for ${selectedWorker?.name}.`,
+        description: `Successfully recorded attendance for ${data.person}.`,
       });
-      
-      // Refresh teams data from server
+
       queryClient.invalidateQueries({ queryKey: ['teams'] });
-      
-      // Update local state immediately for zero-latency feel
+
       if (finishedTeamId && finishedWorkerId) {
-          setSelectedTeam(prev => {
-              if (!prev || prev.id !== finishedTeamId) return prev;
-              return {
-                  ...prev,
-                  workers: prev.workers.map(w => 
-                      w.id === finishedWorkerId 
-                        ? { ...w, status: 'present' as const, lastAttendance: new Date().toLocaleTimeString('en-IN', { hour12: true }) } 
-                        : w
-                  )
-              };
-          });
+        setSelectedTeam(prev => {
+          if (!prev || prev.id !== finishedTeamId) return prev;
+          return {
+            ...prev,
+            workers: prev.workers.map(w =>
+              (w._id === finishedWorkerId || (w as any).id === finishedWorkerId)
+                ? { ...w, status: 'present' as const, lastAttendance: new Date().toLocaleTimeString('en-IN', { hour12: true }) }
+                : w
+            )
+          };
+        });
       }
     },
     onError: (error: any) => {
-      toast({ title: 'Verification Failed', description: error.message, variant: 'destructive' });
-      setIrisVerificationStatus('failed');
+      toast({ title: 'Final Save Failed', description: error.message, variant: 'destructive' });
     }
   });
 
   const markAttendance = () => {
     if (!selectedWorker || !selectedTeam) return;
     if (irisVerificationStatus !== 'matched') {
-      toast({ title: 'Verification incomplete', description: 'Please capture and verify iris.', variant: 'destructive' });
+      toast({ title: 'Verification incomplete', description: 'Identity must match selected worker before marking.', variant: 'destructive' });
       return;
     }
-    
+
     markAttendanceMutation.mutate();
   };
 
@@ -214,11 +240,10 @@ const CurrentTeam = () => {
         {isLoading ? (
           <div className="text-center py-10">Loading teams...</div>
         ) : !selectedTeam ? (
-          // Teams List
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {teams.map((team) => (
               <Card key={team.id} className="border-2 border-primary/20 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => setSelectedTeam(team)}>
+                onClick={() => setSelectedTeam(team)}>
                 <CardHeader>
                   <div className="flex items-center space-x-3">
                     <div className="bg-primary text-primary-foreground p-2 rounded-lg">
@@ -288,7 +313,7 @@ const CurrentTeam = () => {
                 <CardContent>
                   <div className="space-y-3">
                     {selectedTeam.workers.map((worker) => (
-                      <div key={worker.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors">
+                      <div key={worker._id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors">
                         <div className="flex-1">
                           <h4 className="font-medium text-foreground">{worker.name}</h4>
                           <p className="text-sm text-muted-foreground">ID: {worker.aadhaarId}</p>
@@ -335,7 +360,7 @@ const CurrentTeam = () => {
                       {/* Iris Verification */}
                       <div className="space-y-3">
                         <h4 className="font-medium">Iris Capture & Verification</h4>
-                        
+
                         <div className="flex gap-2 mb-2">
                           <Button variant={irisScanMode === 'capture' ? 'default' : 'outline'} onClick={() => setIrisScanMode('capture')}>
                             <Camera className="h-4 w-4 mr-2" /> Capture Image
@@ -369,7 +394,9 @@ const CurrentTeam = () => {
                               <div className="border rounded-lg overflow-hidden">
                                 <div className="text-xs p-1 bg-muted">Captured Preview</div>
                                 {capturedIrisImage ? (
-                                  <img src={capturedIrisImage} alt="Captured Iris" className="w-full h-40 object-cover" />
+                                  <div className="w-full h-48 bg-black">
+                                    <img src={capturedIrisImage} alt="Captured Iris" className="w-full h-full object-contain" />
+                                  </div>
                                 ) : (
                                   <div className="w-full h-40 flex items-center justify-center text-xs text-muted-foreground">No capture yet</div>
                                 )}
@@ -399,7 +426,9 @@ const CurrentTeam = () => {
                             <div className="border rounded-lg overflow-hidden">
                               <div className="text-xs p-1 bg-muted">Uploaded Preview</div>
                               {uploadedIrisImage ? (
-                                <img src={uploadedIrisImage} alt="Uploaded Iris" className="w-full h-40 object-cover" />
+                                <div className="w-full h-48 bg-black">
+                                  <img src={uploadedIrisImage} alt="Uploaded Iris" className="w-full h-full object-contain" />
+                                </div>
                               ) : (
                                 <div className="w-full h-40 flex items-center justify-center text-xs text-muted-foreground">No file selected</div>
                               )}

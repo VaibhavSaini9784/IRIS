@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { LogOut, Home, Users, Plus, Info, Settings } from 'lucide-react';
+import { LogOut, Home, Users, Plus, Info, Settings, BarChart2 } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -72,9 +72,10 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             </Link>
             <Link to="/reports">
               <Button variant="ghost" className="rounded-none border-b-2 border-transparent hover:border-primary hover:bg-accent">
-                <Users size={16} className="mr-2" />
+                <BarChart2 size={16} className="mr-2" />
                 Reports
               </Button>
+
             </Link>
             <Link to="/about">
               <Button variant="ghost" className="rounded-none border-b-2 border-transparent hover:border-primary hover:bg-accent">
@@ -104,8 +105,9 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
       <footer className="bg-card border-t mt-auto py-4">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm text-muted-foreground">
-            © 2024 IRIS Recognition System | Government of India | MNREGA Portal
+            © {new Date().getFullYear()} IRIS Recognition System | Government of India | MNREGA Portal
           </p>
+
         </div>
       </footer>
     </div>

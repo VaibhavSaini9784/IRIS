@@ -74,10 +74,10 @@ const About = () => {
           </CardHeader>
           <CardContent>
             <p className="text-foreground leading-relaxed">
-              The IRIS (Intelligent Recognition & Information System) is a comprehensive 
-              digital platform designed to streamline attendance management for MNREGA (Mahatma Gandhi 
-              National Rural Employment Guarantee Act) workers. This system ensures accurate, secure, 
-              and efficient tracking of worker attendance through advanced ID verification and biometric 
+              The IRIS (Intelligent Recognition & Information System) is a comprehensive
+              digital platform designed to streamline attendance management for MNREGA (Mahatma Gandhi
+              National Rural Employment Guarantee Act) workers. This system ensures accurate, secure,
+              and efficient tracking of worker attendance through advanced ID verification and biometric
               integration.
             </p>
           </CardContent>
@@ -158,17 +158,18 @@ const About = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">Biometric Matching</Badge>
-                  <span className="text-sm text-muted-foreground">Fingerprint/facial recognition</span>
+                  <span className="text-sm text-muted-foreground">Iris pattern matching</span>
                 </div>
+
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">Real-time Validation</Badge>
                   <span className="text-sm text-muted-foreground">Instant database verification</span>
                 </div>
               </div>
-              
+
               <div className="mt-4 p-3 bg-secondary rounded-lg">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> All worker data is synchronized with the central iris database 
+                  <strong>Note:</strong> All worker data is synchronized with the central iris database
                   maintained by the Government of India to ensure data integrity and prevent fraud.
                 </p>
               </div>
@@ -190,7 +191,7 @@ const About = () => {
                       <p className="text-sm text-muted-foreground">Eliminates proxy attendance and identity fraud</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-3">
                     <CheckCircle2 className="h-5 w-5 text-success mt-0.5" />
                     <div>
@@ -198,7 +199,7 @@ const About = () => {
                       <p className="text-sm text-muted-foreground">Instant attendance updates and reporting</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-3">
                     <CheckCircle2 className="h-5 w-5 text-success mt-0.5" />
                     <div>
@@ -206,7 +207,7 @@ const About = () => {
                       <p className="text-sm text-muted-foreground">Paperless system with secure data storage</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-3">
                     <CheckCircle2 className="h-5 w-5 text-success mt-0.5" />
                     <div>

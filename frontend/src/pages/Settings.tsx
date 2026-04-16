@@ -8,13 +8,14 @@ import { Textarea } from '../components/ui/textarea';
 import { Separator } from '../components/ui/separator';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  Settings as SettingsIcon, 
-  User, 
-  Lock, 
-  Phone, 
-  Mail, 
-  MessageSquare, 
+import api from '@/lib/api';
+import {
+  Settings as SettingsIcon,
+  User,
+  Lock,
+  Phone,
+  Mail,
+  MessageSquare,
   HelpCircle,
   Save,
   LogOut
@@ -45,10 +46,11 @@ const Settings = () => {
     }
 
     try {
-      const { data } = await axios.post('http://localhost:4000/api/change-password', {
+      const { data } = await api.post('/change-password', {
         currentPassword,
         newPassword
       });
+
 
       toast({
         title: "Password Updated ✅",
@@ -79,7 +81,7 @@ const Settings = () => {
 
     // TODO: Replace with actual API call
     console.log('Submitting feedback:', feedbackMessage);
-    
+
     toast({
       title: "Feedback Submitted",
       description: "Thank you for your feedback. We'll review it shortly.",
@@ -144,7 +146,7 @@ const Settings = () => {
             </div>
             <div className="mt-4 p-3 bg-secondary rounded-lg">
               <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> Profile information is managed by your system administrator. 
+                <strong>Note:</strong> Profile information is managed by your system administrator.
                 Contact IT support for any changes.
               </p>
             </div>
@@ -241,9 +243,9 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               <div className="p-3 bg-secondary rounded-lg">
                 <p className="text-sm text-muted-foreground">
                   <strong>Support Hours:</strong><br />
@@ -283,7 +285,7 @@ const Settings = () => {
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Submit Feedback
               </Button>
-              
+
               <div className="p-3 bg-accent rounded-lg">
                 <p className="text-sm text-muted-foreground">
                   Your feedback is important to us. We review all submissions and use them to improve the system.
