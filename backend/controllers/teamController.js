@@ -346,9 +346,9 @@ exports.getRecentActivity = async (req, res) => {
       activity.push({
         id: att._id,
         action: `${workerName} marked present`,
-        time: att.date,
+        time: att.date ? new Date(att.date).toISOString() : new Date().toISOString(),
         type: 'success',
-        timestamp: new Date(att.date).getTime()
+        timestamp: new Date(att.date || Date.now()).getTime()
       });
     }
 
@@ -356,7 +356,7 @@ exports.getRecentActivity = async (req, res) => {
       activity.push({
         id: t._id,
         action: `New project team registered: ${t.teamName}`,
-        time: t.createdAt || new Date(),
+        time: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
         type: 'info',
         timestamp: new Date(t.createdAt || Date.now()).getTime()
       });
