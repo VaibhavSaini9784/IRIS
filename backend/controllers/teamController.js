@@ -24,13 +24,26 @@ exports.createTeam = async (req, res) => {
       return res.json({ message: "Team saved successfully to Mock DB", team: newTeam });
     }
 
-    const newTeam = new Team({ teamName, workLocation, workDescription, supervisor, workers });
+    const sanitizedWorkers = workers.map(w => {
+      const { _id, ...rest } = w;
+      return rest;
+    });
+
+    const newTeam = new Team({ 
+      teamName, 
+      workLocation, 
+      workDescription, 
+      supervisor, 
+      workers: sanitizedWorkers 
+    });
+    
     await newTeam.save();
 
-    res.json({ message: "Team saved successfully to MongoDB" });
+    res.json({ message: "Team saved successfully to MongoDB", team: newTeam });
 
   } catch (error) {
-    res.status(500).json({ error: "Error saving team" });
+    console.error("❌ MongoDB Save Error:", error);
+    res.status(500).json({ error: "Error saving team: " + (error.message || "Unknown error") });
   }
 };
 
@@ -416,11 +429,16 @@ exports.addWorker = async (req, res) => {
     }
     const team = await Team.findById(teamId);
     if (!team) return res.status(404).json({ error: "Team not found" });
-    team.workers.push(workerData);
+
+    // Strip temp _id if present
+    const { _id, ...sanitizedWorker } = workerData;
+    team.workers.push(sanitizedWorker);
+    
     await team.save();
     res.json({ message: "Worker added to MongoDB", worker: team.workers[team.workers.length - 1] });
   } catch (error) {
-    res.status(500).json({ error: "Error adding worker" });
+    console.error("❌ Add Worker Error:", error);
+    res.status(500).json({ error: "Error adding worker: " + error.message });
   }
 };
 
@@ -442,11 +460,16 @@ exports.updateWorker = async (req, res) => {
     if (!team) return res.status(404).json({ error: "Team not found" });
     const worker = team.workers.id(workerId);
     if (!worker) return res.status(404).json({ error: "Worker not found" });
-    Object.assign(worker, workerData);
+
+    // Strip _id to prevent overwrite attempt
+    const { _id, ...sanitizedData } = workerData;
+    Object.assign(worker, sanitizedData);
+    
     await team.save();
     res.json({ message: "Worker updated in MongoDB" });
   } catch (error) {
-    res.status(500).json({ error: "Error updating worker" });
+    console.error("❌ Update Worker Error:", error);
+    res.status(500).json({ error: "Error updating worker: " + error.message });
   }
 };
 

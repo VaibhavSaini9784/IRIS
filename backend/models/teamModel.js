@@ -16,6 +16,6 @@ const teamSchema = new mongoose.Schema({
   workDescription: String,
   supervisor: String,
   workers: [workerSchema]
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("Team", teamSchema);

@@ -182,8 +182,8 @@ const Home = () => {
                         <p className="text-xs text-muted-foreground mt-1">
                           {(() => {
                             const d = new Date(activity.time);
-                            return d instanceof Date && !isNaN(d.getTime()) 
-                              ? formatDistanceToNow(d, { addSuffix: true }) 
+                            return d instanceof Date && !isNaN(d.getTime())
+                              ? formatDistanceToNow(d, { addSuffix: true })
                               : "recently";
                           })()}
                         </p>

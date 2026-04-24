@@ -104,8 +104,12 @@ const NewWork = () => {
       await api.post('/team', { teamName, workLocation, workDescription, supervisor, workers });
       toast({ title: '✅ Team Created!', description: `"${teamName}" is live and ready for attendance.` });
       navigate('/current-team');
-    } catch {
-      toast({ title: 'Error', description: 'Failed to save team. Check backend connection.', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to save team. Check backend connection.', 
+        variant: 'destructive' 
+      });
     } finally {
       setIsSubmitting(false);
     }

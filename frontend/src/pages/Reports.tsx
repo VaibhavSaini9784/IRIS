@@ -33,11 +33,31 @@ const fetchReports = async (): Promise<ReportEntry[]> => {
   return data;
 };
 
-// Group entries by date
+// Safe date formatter helper
+const safeDate = (dateStr: string, options: Intl.DateTimeFormatOptions = {}) => {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "N/A";
+    return d.toLocaleDateString('en-IN', options);
+  } catch (e) {
+    return "N/A";
+  }
+};
+
+const safeTime = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "--:--";
+    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch (e) {
+    return "--:--";
+  }
+};
+
 const groupByDate = (entries: ReportEntry[]) => {
   const groups: Record<string, ReportEntry[]> = {};
   entries.forEach(entry => {
-    const day = new Date(entry.date).toLocaleDateString('en-IN', {
+    const day = safeDate(entry.date, {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
     if (!groups[day]) groups[day] = [];
@@ -50,10 +70,9 @@ const groupByDate = (entries: ReportEntry[]) => {
 const exportCSV = (data: ReportEntry[]) => {
   const headers = ['Date', 'Time', 'Worker Name', 'Aadhaar ID', 'Team', 'Status', 'AI Confidence', 'Matched Person'];
   const rows = data.map(r => {
-    const d = new Date(r.date);
     return [
-      d.toLocaleDateString('en-IN'),
-      d.toLocaleTimeString('en-IN'),
+      safeDate(r.date),
+      safeTime(r.date),
       r.workerName,
       r.aadhaarId,
       r.teamName,
@@ -100,9 +119,7 @@ const Reports = () => {
 
   // Get unique dates
   const allDates = useMemo(() => {
-    return [...new Set(reports.map(r =>
-      new Date(r.date).toLocaleDateString('en-IN')
-    ))];
+    return [...new Set(reports.map(r => safeDate(r.date)))];
   }, [reports]);
 
   // Filtered reports
@@ -116,7 +133,7 @@ const Reports = () => {
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
       const matchTeam = teamFilter === 'all' || r.teamName === teamFilter;
 
-      const rDate = new Date(r.date).toLocaleDateString('en-IN');
+      const rDate = safeDate(r.date);
       const matchDate = dateFilter === 'all' || rDate === dateFilter;
 
       return matchSearch && matchStatus && matchTeam && matchDate;
@@ -352,7 +369,7 @@ const Reports = () => {
                               .map(log => (
                                 <TableRow key={log.id} className="hover:bg-muted/20">
                                   <TableCell className="font-mono text-sm whitespace-nowrap text-muted-foreground">
-                                    {new Date(log.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    {safeTime(log.date)}
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-2">
@@ -426,8 +443,8 @@ const Reports = () => {
                         return (
                           <TableRow key={log.id} className="hover:bg-muted/20">
                             <TableCell className="whitespace-nowrap">
-                              <div className="text-sm font-medium">{d.toLocaleDateString('en-IN')}</div>
-                              <div className="text-xs text-muted-foreground font-mono">{d.toLocaleTimeString('en-IN')}</div>
+                              <div className="text-sm font-medium">{safeDate(log.date)}</div>
+                              <div className="text-xs text-muted-foreground font-mono">{safeTime(log.date)}</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">

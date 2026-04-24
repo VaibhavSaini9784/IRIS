@@ -119,6 +119,21 @@
           "irisClassLabel": "VS"
         }
       ]
+    },
+    {
+      "id": "team_1777042137393",
+      "teamName": "Base A",
+      "workLocation": "Jaipur, Rajasthan",
+      "workDescription": "",
+      "supervisor": "Rakseh",
+      "workers": [
+        {
+          "_id": "worker_jq7j836q2",
+          "name": "Vaibhav",
+          "aadhaarId": "",
+          "irisClassLabel": "Vaibhav_Chhipa"
+        }
+      ]
     }
   ],
   "attendances": [
