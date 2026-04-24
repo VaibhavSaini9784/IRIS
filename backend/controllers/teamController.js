@@ -202,13 +202,16 @@ exports.getReports = async (req, res) => {
           }
         }
 
+        const shiftCount = group.shifts.size;
+
         return {
           id: group.id,
           date: group.date,
           workerName: workerObj ? workerObj.name : 'Unknown Worker',
           aadhaarId: workerObj ? workerObj.aadhaarId : 'N/A',
           teamName: teamObj ? (teamObj.teamName || teamObj.name) : 'Unknown Team',
-          status: group.shifts.size >= 3 ? 'present' : 'absent',
+          status: shiftCount >= 3 ? 'present' : 'partial',
+          shiftCount: shiftCount,
           confidence: group.confidence,
           matchedPerson: group.matchedPerson
         };
@@ -252,13 +255,16 @@ exports.getReports = async (req, res) => {
         }
       }
 
+      const shiftCount = group.shifts.size;
+
       return {
         id: group.id,
         date: group.date,
         workerName: workerObj ? workerObj.name : 'Unknown Worker',
         aadhaarId: workerObj ? workerObj.aadhaarId : 'N/A',
         teamName: teamObj ? (teamObj.teamName || teamObj.name) : 'Unknown Team',
-        status: group.shifts.size >= 3 ? 'present' : 'absent',
+        status: shiftCount >= 3 ? 'present' : 'partial',
+        shiftCount: shiftCount,
         confidence: group.confidence,
         matchedPerson: group.matchedPerson
       };

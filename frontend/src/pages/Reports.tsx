@@ -23,6 +23,7 @@ interface ReportEntry {
   aadhaarId: string;
   teamName: string;
   status: string;
+  shiftCount?: number;
   confidence: number;
   matchedPerson: string;
 }
@@ -146,7 +147,7 @@ const Reports = () => {
             <CardContent className="p-4 flex items-center gap-3">
               <div className="bg-destructive/10 p-2 rounded-lg"><XCircle className="h-5 w-5 text-destructive" /></div>
               <div>
-                <p className="text-xs text-muted-foreground">Failed Verifications</p>
+                <p className="text-xs text-muted-foreground">Incomplete (Partial)</p>
                 <p className="text-2xl font-bold text-destructive">{stats.failed}</p>
               </div>
             </CardContent>
@@ -196,8 +197,8 @@ const Reports = () => {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="present">✅ Present</SelectItem>
-                    <SelectItem value="absent">❌ Absent</SelectItem>
+                    <SelectItem value="present">✅ Complete</SelectItem>
+                    <SelectItem value="partial">⏳ In Progress</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -373,11 +374,11 @@ const Reports = () => {
                                   <TableCell>
                                     {log.status === 'present' ? (
                                       <Badge className="bg-success/10 text-success border border-success/30 hover:bg-success/20">
-                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Present
+                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Complete (3/3)
                                       </Badge>
                                     ) : (
-                                      <Badge className="bg-destructive/10 text-destructive border border-destructive/30">
-                                        <XCircle className="h-3 w-3 mr-1" /> Failed
+                                      <Badge className="bg-warning/10 text-warning-foreground border border-warning/30 text-yellow-700">
+                                        <Clock className="h-3 w-3 mr-1" /> Partial ({log.shiftCount || 1}/3)
                                       </Badge>
                                     )}
                                   </TableCell>
@@ -446,11 +447,11 @@ const Reports = () => {
                             <TableCell>
                               {log.status === 'present' ? (
                                 <Badge className="bg-success/10 text-success border border-success/30">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Present
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Complete (3/3)
                                 </Badge>
                               ) : (
-                                <Badge className="bg-destructive/10 text-destructive border border-destructive/30">
-                                  <XCircle className="h-3 w-3 mr-1" /> Failed
+                                <Badge className="bg-warning/10 text-warning-foreground border border-warning/30 text-yellow-700">
+                                  <Clock className="h-3 w-3 mr-1" /> Partial ({log.shiftCount || 1}/3)
                                 </Badge>
                               )}
                             </TableCell>

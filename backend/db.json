@@ -75,6 +75,12 @@
           "aadhaarId": "123412341234",
           "irisClassLabel": "Sumit",
           "_id": "worker_8kgfbejl4"
+        },
+        {
+          "name": "Vaibhav",
+          "aadhaarId": "1231123123123123",
+          "irisClassLabel": "Vaibhav_Chhipa",
+          "_id": "worker_4upecxzei"
         }
       ]
     },
@@ -252,6 +258,14 @@
       "shift": 2,
       "status": "present",
       "date": "2026-04-24T09:59:59.774Z"
+    },
+    {
+      "id": "att_1777037476140",
+      "teamId": "team_1775797044264",
+      "workerId": "worker_4upecxzei",
+      "shift": 1,
+      "status": "present",
+      "date": "2026-04-24T13:31:16.140Z"
     }
   ],
   "users": [
