@@ -5,8 +5,13 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { useToast } from '../hooks/use-toast';
-import { Users, Scan, CheckCircle2, XCircle, Clock, UserCheck, Camera, Upload, Eye } from 'lucide-react';
+import { Users, Scan, CheckCircle2, XCircle, Clock, UserCheck, Camera, Upload, Eye, Trash2, Edit, Save, MoreVertical, Plus, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Label } from '../components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import api from '../lib/api';
 
 interface Worker {
   _id: string;
@@ -16,6 +21,7 @@ interface Worker {
   status: 'present' | 'absent' | 'pending';
   lastAttendance?: string;
   irisClassLabel: string;
+  shifts?: number[];
 }
 
 interface Team {
@@ -29,8 +35,8 @@ interface Team {
 const CurrentTeam = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
 
   const [irisVerificationStatus, setIrisVerificationStatus] = useState<'idle' | 'scanning' | 'matched' | 'failed'>('idle');
   const [irisScanMode, setIrisScanMode] = useState<'capture' | 'upload'>('capture');
@@ -42,6 +48,20 @@ const CurrentTeam = () => {
   const [capturedIrisImage, setCapturedIrisImage] = useState<string | null>(null);
   const [uploadedIrisImage, setUploadedIrisImage] = useState<string | null>(null);
 
+  // Worker CRUD State
+  const [isAddingWorker, setIsAddingWorker] = useState(false);
+  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+  const [workerForm, setWorkerForm] = useState({ name: '', aadhaarId: '', irisClassLabel: '' });
+
+  // Get ML Labels for Select
+  const { data: mlLabels = [] } = useQuery({
+    queryKey: ['labels'],
+    queryFn: async () => {
+      const res = await api.get('/labels');
+      return res.data.labels as string[];
+    }
+  });
+
   const { data: teams = [], isLoading } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: async () => {
@@ -50,6 +70,55 @@ const CurrentTeam = () => {
       return res.json();
     }
   });
+
+  const selectedTeam = teams.find(t => t.id === selectedTeamId) || null;
+  const selectedWorker = selectedTeam?.workers.find(w => w._id === selectedWorkerId || (w as any).id === selectedWorkerId) || null;
+
+  const deleteTeamMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/teams/${id}`);
+    },
+    onSuccess: () => {
+      setSelectedTeamId(null);
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      toast({ title: 'Team Deleted', description: 'The team has been removed.' });
+    }
+  });
+
+  const addWorkerMutation = useMutation({
+    mutationFn: async ({ teamId, worker }: { teamId: string; worker: any }) => {
+      await api.post(`/teams/${teamId}/workers`, worker);
+    },
+    onSuccess: () => {
+      setIsAddingWorker(false);
+      setWorkerForm({ name: '', aadhaarId: '', irisClassLabel: '' });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      toast({ title: 'Worker Added', description: 'Worker has been added to team.' });
+    }
+  });
+
+  const updateWorkerMutation = useMutation({
+    mutationFn: async ({ teamId, workerId, worker }: { teamId: string; workerId: string; worker: any }) => {
+      await api.put(`/teams/${teamId}/workers/${workerId}`, worker);
+    },
+    onSuccess: () => {
+      setEditingWorker(null);
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      toast({ title: 'Worker Updated', description: 'Worker details updated.' });
+    }
+  });
+
+  const deleteWorkerMutation = useMutation({
+    mutationFn: async ({ teamId, workerId }: { teamId: string; workerId: string }) => {
+      await api.delete(`/teams/${teamId}/workers/${workerId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      toast({ title: 'Worker Removed', description: 'Worker removed from team.' });
+    }
+  });
+
+
 
   const startStream = async () => {
     try {
@@ -196,91 +265,91 @@ const CurrentTeam = () => {
   };
 
   const handleIrisVerify = async () => {
-  const irisImageBase64 = getActiveIrisImage();
+    const irisImageBase64 = getActiveIrisImage();
 
-  if (!irisImageBase64) {
-    toast({
-      title: 'Capture iris first',
-      description: 'Please capture iris image to verify.',
-      variant: 'destructive'
-    });
-    return;
-  }
-
-  // 🔥 STRICT CHECK
-  if (!selectedWorker || !selectedWorker.irisClassLabel) {
-    console.error("❌ Worker not selected properly:", selectedWorker);
-
-    toast({
-      title: 'No person selected',
-      description: 'Please select a worker before verification.',
-      variant: 'destructive'
-    });
-
-    return;
-  }
-
-  console.log("✅ Sending person:", selectedWorker.irisClassLabel);
-
-  setIrisVerificationStatus('scanning');
-  setDetectedPerson(null);
-
-  try {
-    const formData = new FormData();
-    formData.append('person', selectedWorker.irisClassLabel);
-
-    const response = await fetch('http://localhost:5000/predict', {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    console.log("📦 Backend Response:", data);
-
-    if (!response.ok) throw new Error(data.error || 'AI verification failed');
-
-    if (data.predicted === "Unknown") {
-      setIrisVerificationStatus('failed');
-
+    if (!irisImageBase64) {
       toast({
-        title: 'Person Unknown',
-        description: 'Identity could not be verified.',
+        title: 'Capture iris first',
+        description: 'Please capture iris image to verify.',
         variant: 'destructive'
       });
-
-    } else if (data.predicted !== selectedWorker.irisClassLabel) {
-      setIrisVerificationStatus('failed');
-      setDetectedPerson(data.predicted);
-
-      toast({
-        title: 'Identity Mismatch',
-        description: `Detected ${data.predicted}, but selected ${selectedWorker.name}`,
-        variant: 'destructive'
-      });
-
-    } else {
-      setIrisVerificationStatus('matched');
-      setDetectedPerson(data.predicted);
-
-      toast({
-        title: 'Verification Success',
-        description: `Identity confirmed as ${data.predicted}`
-      });
+      return;
     }
 
-  } catch (error) {
-    console.error("❌ Error:", error);
+    // 🔥 STRICT CHECK
+    if (!selectedWorker || !selectedWorker.irisClassLabel) {
+      console.error("❌ Worker not selected properly:", selectedWorker);
 
-    setIrisVerificationStatus('failed');
+      toast({
+        title: 'No person selected',
+        description: 'Please select a worker before verification.',
+        variant: 'destructive'
+      });
 
-    toast({
-      title: 'Error',
-      description: error.message || 'Something went wrong',
-      variant: 'destructive'
-    });
-  }
-};
+      return;
+    }
+
+    console.log("✅ Sending person:", selectedWorker.irisClassLabel);
+
+    setIrisVerificationStatus('scanning');
+    setDetectedPerson(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('person', selectedWorker.irisClassLabel);
+
+      const response = await fetch('http://localhost:5000/predict', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      console.log("📦 Backend Response:", data);
+
+      if (!response.ok) throw new Error(data.error || 'AI verification failed');
+
+      if (data.predicted === "Unknown") {
+        setIrisVerificationStatus('failed');
+
+        toast({
+          title: 'Person Unknown',
+          description: 'Identity could not be verified.',
+          variant: 'destructive'
+        });
+
+      } else if (data.predicted !== selectedWorker.irisClassLabel) {
+        setIrisVerificationStatus('failed');
+        setDetectedPerson(data.predicted);
+
+        toast({
+          title: 'Identity Mismatch',
+          description: `Detected ${data.predicted}, but selected ${selectedWorker.name}`,
+          variant: 'destructive'
+        });
+
+      } else {
+        setIrisVerificationStatus('matched');
+        setDetectedPerson(data.predicted);
+
+        toast({
+          title: 'Verification Success',
+          description: `Identity confirmed as ${data.predicted}`
+        });
+      }
+
+    } catch (error) {
+      console.error("❌ Error:", error);
+
+      setIrisVerificationStatus('failed');
+
+      toast({
+        title: 'Error',
+        description: error.message || 'Something went wrong',
+        variant: 'destructive'
+      });
+    }
+  };
 
   useEffect(() => {
     resetVerificationState();
@@ -303,9 +372,9 @@ const CurrentTeam = () => {
 
       const formData = new FormData();
       formData.append('image', blob, 'iris.png');
-      formData.append('teamId', selectedTeam.id);
-      formData.append('workerId', selectedWorker._id || (selectedWorker as any).id);
-      formData.append('person', selectedWorker.irisClassLabel);
+      formData.append('teamId', selectedTeamId || '');
+      formData.append('workerId', selectedWorker?._id || (selectedWorker as any)?.id || '');
+      formData.append('person', selectedWorker?.irisClassLabel || '');
 
       const response = await fetch('http://localhost:4000/api/mark-attendance', {
         method: 'POST',
@@ -321,7 +390,7 @@ const CurrentTeam = () => {
       const finishedTeamId = selectedTeam?.id;
 
       resetVerificationState();
-      setSelectedWorker(null);
+      setSelectedWorkerId(null);
 
       toast({
         title: 'Attendance Verified ✅',
@@ -329,20 +398,6 @@ const CurrentTeam = () => {
       });
 
       queryClient.invalidateQueries({ queryKey: ['teams'] });
-
-      if (finishedTeamId && finishedWorkerId) {
-        setSelectedTeam(prev => {
-          if (!prev || prev.id !== finishedTeamId) return prev;
-          return {
-            ...prev,
-            workers: prev.workers.map(w =>
-              (w._id === finishedWorkerId || (w as any).id === finishedWorkerId)
-                ? { ...w, status: 'present' as const, lastAttendance: new Date().toLocaleTimeString('en-IN', { hour12: true }) }
-                : w
-            )
-          };
-        });
-      }
     },
     onError: (error: any) => {
       toast({ title: 'Final Save Failed', description: error.message, variant: 'destructive' });
@@ -359,16 +414,13 @@ const CurrentTeam = () => {
     markAttendanceMutation.mutate();
   };
 
-  const getStatusBadge = (status: Worker['status']) => {
-    switch (status) {
-      case 'present':
-        return <Badge className="bg-success text-success-foreground">Present</Badge>;
-      case 'absent':
-        return <Badge variant="destructive">Absent</Badge>;
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
+  const getStatusBadge = (worker: Worker) => {
+    if (worker.status === 'present') {
+      return <Badge className="bg-success text-success-foreground">Completed (3/3)</Badge>;
+    } else if (worker.shifts && worker.shifts.length > 0) {
+      return <Badge className="bg-warning text-warning-foreground text-yellow-800">Marked ({worker.shifts.length}/3)</Badge>;
+    } else {
+      return <Badge variant="secondary">Pending (0/3)</Badge>;
     }
   };
 
@@ -380,8 +432,8 @@ const CurrentTeam = () => {
         ) : !selectedTeam ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {teams.map((team) => (
-              <Card key={team.id} className="border-2 border-primary/20 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setSelectedTeam(team)}>
+                <Card key={team.id} className="border-2 border-primary/20 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setSelectedTeamId(team.id)}>
                 <CardHeader>
                   <div className="flex items-center space-x-3">
                     <div className="bg-primary text-primary-foreground p-2 rounded-lg">
@@ -410,9 +462,27 @@ const CurrentTeam = () => {
                       </span>
                     </div>
                   </div>
-                  <Button className="w-full mt-4 bg-primary hover:bg-primary-hover text-primary-foreground">
-                    View Team Details
-                  </Button>
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      className="flex-1 bg-primary hover:bg-primary-hover text-primary-foreground"
+                      onClick={() => setSelectedTeamId(team.id)}
+                    >
+                      View Team Details
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="text-destructive border-destructive/20 hover:bg-destructive hover:text-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if(confirm(`Permanently delete team: ${team.name}?`)) {
+                          deleteTeamMutation.mutate(team.id);
+                        }
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -422,21 +492,45 @@ const CurrentTeam = () => {
           <div className="space-y-6">
             {/* Team Header */}
             <Card className="border-2 border-primary/20 bg-gradient-to-r from-secondary to-accent">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-primary text-primary-foreground p-3 rounded-lg">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center space-x-3 w-full sm:w-auto">
+                    <div className="bg-primary text-primary-foreground p-3 rounded-lg flex-shrink-0">
                       <Users size={24} />
                     </div>
-                    <div>
-                      <CardTitle className="text-xl text-primary">{selectedTeam.name}</CardTitle>
-                      <CardDescription className="text-base">{selectedTeam.location}</CardDescription>
-                      <p className="text-sm text-muted-foreground mt-1">Supervisor: {selectedTeam.supervisor}</p>
+                    <div className="min-w-0">
+                      <CardTitle className="text-lg sm:text-xl text-primary truncate">{selectedTeam.name}</CardTitle>
+                      <CardDescription className="text-sm sm:text-base truncate">{selectedTeam.location}</CardDescription>
+                      <p className="text-xs text-muted-foreground mt-1">Supervisor: {selectedTeam.supervisor}</p>
                     </div>
                   </div>
-                  <Button variant="outline" onClick={() => setSelectedTeam(null)}>
-                    Back to Teams
-                  </Button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button size="sm" onClick={() => setIsAddingWorker(true)} className="flex-1 sm:flex-none">
+                      <Plus className="h-4 w-4 mr-1" /> Add Worker
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setSelectedTeamId(null)}>
+                          Back to Teams List
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => {
+                            if(confirm("Permanently delete this team?")) {
+                              deleteTeamMutation.mutate(selectedTeamId || '');
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Delete Team
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </CardHeader>
             </Card>
@@ -451,26 +545,52 @@ const CurrentTeam = () => {
                 <CardContent>
                   <div className="space-y-3">
                     {selectedTeam.workers.map((worker) => (
-                      <div key={worker._id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-foreground">{worker.name}</h4>
-                          <p className="text-sm text-muted-foreground">ID: {worker.aadhaarId}</p>
+                       <div key={worker._id} className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${selectedWorkerId === worker._id ? 'border-primary bg-primary/5' : 'hover:bg-accent/50'}`}>
+                        <div className="flex-1 min-w-0 mr-2">
+                          <h4 className="font-medium text-foreground truncate">{worker.name}</h4>
+                          <p className="text-xs text-muted-foreground truncate">ID: {worker.aadhaarId}</p>
                           {worker.lastAttendance && (
-                            <p className="text-xs text-muted-foreground">Last: {worker.lastAttendance}</p>
+                            <p className="text-[10px] text-muted-foreground">Last: {worker.lastAttendance}</p>
                           )}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          {getStatusBadge(worker.status)}
-                          {worker.status === 'pending' && (
+                        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+                          {getStatusBadge(worker)}
+                          {worker.status !== 'present' && (
                             <Button
                               size="sm"
-                              onClick={() => setSelectedWorker(worker)}
-                              className="bg-primary hover:bg-primary-hover text-primary-foreground"
+                              variant={selectedWorkerId === worker._id ? "default" : "outline"}
+                              onClick={() => setSelectedWorkerId(worker._id)}
+                              className="h-8 px-2 sm:px-3 text-[10px] sm:text-xs"
                             >
-                              <UserCheck size={16} className="mr-1" />
-                              Mark
+                              <UserCheck size={14} className="sm:mr-1" />
+                              <span className="hidden sm:inline">Mark</span>
                             </Button>
                           )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                setWorkerForm({ name: worker.name, aadhaarId: worker.aadhaarId, irisClassLabel: worker.irisClassLabel });
+                                setEditingWorker(worker);
+                              }}>
+                                <Edit className="h-4 w-4 mr-2" /> Edit Info
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => {
+                                  if(confirm(`Remove ${worker.name}?`)) {
+                                    deleteWorkerMutation.mutate({ teamId: selectedTeamId || '', workerId: worker._id });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Remove
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
@@ -622,6 +742,102 @@ const CurrentTeam = () => {
           </div>
         )}
       </div>
+
+      {/* Worker CRUD Modal */}
+      <Dialog open={isAddingWorker || !!editingWorker} onOpenChange={(open) => {
+          if (!open) {
+            setIsAddingWorker(false);
+            setEditingWorker(null);
+            setWorkerForm({ name: '', aadhaarId: '', irisClassLabel: '' });
+          }
+      }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>
+               {editingWorker ? 'Edit Profile' : 'Add New Worker'}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+               {editingWorker ? 'Update profile information for this worker.' : 'Onboard a new worker to this team.'}
+            </p>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-4">
+            <div className="space-y-1">
+              <Label htmlFor="name" className="text-xs font-bold text-muted-foreground uppercase">FullName</Label>
+              <Input 
+                id="name" 
+                placeholder="Rahul Sharma" 
+                className="h-11"
+                value={workerForm.name}
+                onChange={e => setWorkerForm({...workerForm, name: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="aadhaar" className="text-xs font-bold text-muted-foreground uppercase">Aadhaar / ID</Label>
+              <Input 
+                id="aadhaar" 
+                placeholder="12-digit number" 
+                className="h-11"
+                value={workerForm.aadhaarId}
+                onChange={e => setWorkerForm({...workerForm, aadhaarId: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-muted-foreground uppercase">AI Label Mapping</Label>
+              <Select 
+                value={workerForm.irisClassLabel} 
+                onValueChange={val => setWorkerForm({...workerForm, irisClassLabel: val})}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Select AI model label" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mlLabels.map(label => (
+                    <SelectItem key={label} value={label}>{label}</SelectItem>
+                  ))}
+                  {mlLabels.length === 0 && <p className="p-2 text-xs text-muted-foreground">No labels found</p>}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground italic px-1">
+                Note: This must match a pre-trained label in the IRIS model.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="h-11" onClick={() => {
+                setIsAddingWorker(false);
+                setEditingWorker(null);
+            }}>Cancel</Button>
+            <Button 
+                className="h-11 flex-1 font-bold"
+                disabled={!workerForm.name || !workerForm.irisClassLabel}
+                onClick={() => {
+                   if (editingWorker) {
+                      updateWorkerMutation.mutate({ 
+                        teamId: selectedTeamId || '', 
+                        workerId: editingWorker._id, 
+                        worker: workerForm 
+                      });
+                   } else {
+                      addWorkerMutation.mutate({ 
+                        teamId: selectedTeamId || '', 
+                        worker: workerForm 
+                      });
+                   }
+                }}
+            >
+              {addWorkerMutation.isPending || updateWorkerMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+              ) : (
+                <><Save className="mr-2 h-4 w-4" /> Save Worker</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

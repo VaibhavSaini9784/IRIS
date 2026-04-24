@@ -7,12 +7,6 @@
       "supervisor": "Admin Supervisor",
       "workers": [
         {
-          "_id": "worker_1",
-          "name": "Shrey",
-          "aadhaarId": "0000-0000-0001",
-          "irisClassLabel": "Shrey"
-        },
-        {
           "_id": "worker_2",
           "name": "Stuti Agarwal",
           "aadhaarId": "0000-0000-0002",
@@ -59,6 +53,12 @@
           "name": "VS",
           "aadhaarId": "0000-0000-0009",
           "irisClassLabel": "VS"
+        },
+        {
+          "name": "Shrey",
+          "aadhaarId": "123412341234",
+          "irisClassLabel": "Shrey",
+          "_id": "worker_4ou48i9d3"
         }
       ]
     },
@@ -113,27 +113,6 @@
           "irisClassLabel": "VS"
         }
       ]
-    },
-    {
-      "id": "team_1776263767060",
-      "teamName": "Crew B",
-      "workLocation": "Jaipur, Rajasthan",
-      "workDescription": "",
-      "supervisor": "Rajesh Kumar",
-      "workers": [
-        {
-          "_id": "worker_vwlcz0rhh",
-          "name": "Vaibhav Saini",
-          "aadhaarId": "123412341234",
-          "irisClassLabel": "VS"
-        },
-        {
-          "_id": "worker_frzda3jt5",
-          "name": "Vaibhav Chhipa",
-          "aadhaarId": "123451234123",
-          "irisClassLabel": "Vaibhav_Chhipa"
-        }
-      ]
     }
   ],
   "attendances": [
@@ -151,14 +130,6 @@
       "workerId": "worker_6",
       "date": "2026-04-10T04:48:26.041Z",
       "confidence": 1,
-      "status": "present"
-    },
-    {
-      "id": "att_1775797558487",
-      "teamId": "6615567890abcdef12345678",
-      "workerId": "worker_1",
-      "date": "2026-04-10T05:05:58.487Z",
-      "confidence": 0.89,
       "status": "present"
     },
     {
@@ -202,14 +173,85 @@
       "teamId": "team_1776247216296",
       "workerId": "worker_nwsyflqjf",
       "status": "present",
-      "time": "2026-04-16T04:04:03.589Z"
+      "date": "2026-04-16T04:04:03.589Z"
     },
     {
       "id": "att_1776312260673",
       "teamId": "team_1776247216296",
       "workerId": "worker_hgu6ctkjr",
       "status": "present",
-      "time": "2026-04-16T04:04:20.673Z"
+      "date": "2026-04-16T04:04:20.673Z"
+    },
+    {
+      "id": "att_1776319362053",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_9",
+      "status": "present",
+      "date": "2026-04-16T06:02:42.053Z"
+    },
+    {
+      "id": "att_1776319416266",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_9",
+      "status": "present",
+      "date": "2026-04-16T06:03:36.266Z"
+    },
+    {
+      "id": "att_1776319460045",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_6",
+      "status": "present",
+      "date": "2026-04-16T06:04:20.045Z"
+    },
+    {
+      "id": "att_1776319511471",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_3",
+      "status": "present",
+      "date": "2026-04-16T06:05:11.471Z"
+    },
+    {
+      "id": "att_1777022178927",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_9",
+      "status": "present",
+      "date": "2026-04-24T09:16:18.927Z"
+    },
+    {
+      "id": "att_1777023252942",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_6",
+      "status": "present",
+      "date": "2026-04-24T09:34:12.942Z"
+    },
+    {
+      "id": "att_1777023280288",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_6",
+      "status": "present",
+      "date": "2026-04-24T09:34:40.288Z"
+    },
+    {
+      "id": "att_1777023291550",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_6",
+      "status": "present",
+      "date": "2026-04-24T09:34:51.550Z"
+    },
+    {
+      "id": "att_1777023846042",
+      "teamId": "team_1776247216296",
+      "workerId": "worker_hgu6ctkjr",
+      "status": "present",
+      "date": "2026-04-24T09:44:06.042Z"
+    },
+    {
+      "id": "att_1777024799774",
+      "teamId": "6615567890abcdef12345678",
+      "workerId": "worker_9",
+      "shift": 2,
+      "status": "present",
+      "date": "2026-04-24T09:59:59.774Z"
     }
   ],
   "users": [

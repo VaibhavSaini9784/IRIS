@@ -65,15 +65,15 @@ const Home = () => {
         {statsLoading ? (
           <div className="flex justify-center p-10"><Clock className="animate-spin h-8 w-8 text-primary" /></div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border border-success/30 hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-success/10 p-2 rounded-lg">
+                  <div className="bg-success/10 p-2 rounded-lg shrink-0">
                     <Users className="h-5 w-5 text-success" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Workers</p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">Total Workers</p>
                     <p className="text-2xl font-bold text-foreground">{stats?.totalWorkers || 0}</p>
                   </div>
                 </div>
@@ -83,11 +83,11 @@ const Home = () => {
             <Card className="border border-primary/30 hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-primary/10 p-2 rounded-lg">
+                  <div className="bg-primary/10 p-2 rounded-lg shrink-0">
                     <TrendingUp className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Teams</p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">Active Teams</p>
                     <p className="text-2xl font-bold text-foreground">{stats?.activeTeams || 0}</p>
                   </div>
                 </div>
@@ -97,11 +97,11 @@ const Home = () => {
             <Card className="border border-success/30 hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-success/10 p-2 rounded-lg">
+                  <div className="bg-success/10 p-2 rounded-lg shrink-0">
                     <CheckCircle2 className="h-5 w-5 text-success" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Today's Attendance</p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">Today's Attendance</p>
                     <p className="text-2xl font-bold text-foreground">{stats?.todayAttendance || 0}</p>
                   </div>
                 </div>
@@ -111,11 +111,11 @@ const Home = () => {
             <Card className="border border-warning/30 hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
-                  <div className="bg-warning/10 p-2 rounded-lg">
+                  <div className="bg-warning/10 p-2 rounded-lg shrink-0">
                     <AlertCircle className="h-5 w-5 text-warning" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pending Verifications</p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground truncate">Pending Verifications</p>
                     <p className="text-2xl font-bold text-foreground">{stats?.pendingVerifications || 0}</p>
                   </div>
                 </div>
@@ -127,12 +127,12 @@ const Home = () => {
         {/* Quick Actions & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Quick Actions */}
-          <Card className="border-2 border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-primary">Quick Actions</CardTitle>
+          <Card className="border-2 border-primary/20 h-[400px] flex flex-col">
+            <CardHeader className="p-4 sm:p-6 shrink-0">
+              <CardTitle className="text-primary text-lg sm:text-xl">Quick Actions</CardTitle>
               <CardDescription>Common tasks and operations</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 p-4 sm:p-6 pt-0 sm:pt-0 flex-1 flex flex-col justify-center">
               <Link to="/current-team">
                 <Button className="w-full justify-start bg-primary hover:bg-primary-hover text-primary-foreground" size="lg">
                   <Users className="mr-3 h-5 w-5" />
@@ -146,7 +146,7 @@ const Home = () => {
                 </Button>
               </Link>
               <Link to="/reports">
-                <Button className="w-full justify-start" variant="outline" size="lg">
+                <Button className="w-full justify-start md:mt-0" variant="outline" size="lg">
                   <Clock className="mr-3 h-5 w-5" />
                   View Attendance Reports
                 </Button>
@@ -155,21 +155,21 @@ const Home = () => {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="border-2 border-primary/20">
-            <CardHeader>
-              <CardTitle className="text-primary">Recent Activity</CardTitle>
+          <Card className="border-2 border-primary/20 flex flex-col h-[400px]">
+            <CardHeader className="p-4 sm:p-6 shrink-0">
+              <CardTitle className="text-primary text-lg sm:text-xl">Recent Activity</CardTitle>
               <CardDescription>Latest system updates and notifications</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 overflow-y-auto flex-1 custom-scrollbar">
               {activityLoading ? (
                 <div className="flex justify-center p-6"><Clock className="animate-spin h-6 w-6 text-muted-foreground" /></div>
               ) : recentActivity.length === 0 ? (
                 <div className="text-center py-6 text-sm text-muted-foreground italic">No recent activity detected.</div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 pr-1">
                   {recentActivity.map((activity: any) => (
                     <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg bg-accent/50">
-                      <div className={`p-1 rounded-full mt-1 ${activity.type === 'success' ? 'bg-success text-success-foreground' :
+                      <div className={`p-1 rounded-full mt-1 shrink-0 ${activity.type === 'success' ? 'bg-success text-success-foreground' :
                         activity.type === 'warning' ? 'bg-warning text-warning-foreground' :
                           'bg-primary text-primary-foreground'
                         }`}>
@@ -177,9 +177,9 @@ const Home = () => {
                           activity.type === 'warning' ? <AlertCircle size={12} /> :
                             <Clock size={12} />}
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-foreground">{activity.action}</p>
-                        <p className="text-xs text-muted-foreground">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-foreground leading-tight">{activity.action}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
                           {formatDistanceToNow(new Date(activity.time), { addSuffix: true })}
                         </p>
                       </div>

@@ -171,6 +171,9 @@ const markAttendance = async (req, res) => {
             return res.status(400).json({ error: "teamId and workerId required" });
         }
 
+        const COOLDOWN_MINUTES = 120; // 2 hour cooldown
+
+
         if (!process.env.MONGO_URI) {
             const db = getData();
 
@@ -189,12 +192,39 @@ const markAttendance = async (req, res) => {
                 });
             }
 
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+            
+            const todaysAtts = (db.attendances || []).filter(a => 
+                (a.workerId === workerId || a.workerId === worker.id) && 
+                new Date(a.date) >= startOfDay
+            );
+
+            todaysAtts.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (todaysAtts.length >= 3) {
+                return res.status(400).json({ error: "All 3 shifts already marked for today." });
+            }
+
+            if (todaysAtts.length > 0) {
+                const lastAtt = todaysAtts[todaysAtts.length - 1];
+                const timeDiffMs = new Date() - new Date(lastAtt.date);
+                const timeDiffMinutes = Math.floor(timeDiffMs / 60000);
+                
+                if (timeDiffMinutes < COOLDOWN_MINUTES) {
+                    return res.status(400).json({ error: `You must wait at least ${COOLDOWN_MINUTES} minute(s) before marking the next shift.` });
+                }
+            }
+
+            const currentShift = todaysAtts.length + 1;
+
             const newAttendance = {
                 id: "att_" + Date.now(),
                 teamId,
                 workerId,
+                shift: currentShift,
                 status: "present",
-                time: new Date().toISOString()
+                date: new Date().toISOString()
             };
 
             db.attendances = db.attendances || [];
@@ -204,7 +234,8 @@ const markAttendance = async (req, res) => {
             return res.json({
                 message: "Attendance marked successfully",
                 person,
-                attendance: newAttendance
+                attendance: newAttendance,
+                shift: currentShift
             });
         }
 
@@ -223,9 +254,34 @@ const markAttendance = async (req, res) => {
             });
         }
 
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const todaysAtts = await Attendance.find({
+            workerId: workerId,
+            date: { $gte: startOfDay }
+        }).sort({ date: 1 });
+
+        if (todaysAtts.length >= 3) {
+            return res.status(400).json({ error: "All 3 shifts already marked for today." });
+        }
+
+        if (todaysAtts.length > 0) {
+            const lastAtt = todaysAtts[todaysAtts.length - 1];
+            const timeDiffMs = new Date() - new Date(lastAtt.date);
+            const timeDiffMinutes = Math.floor(timeDiffMs / 60000);
+            
+            if (timeDiffMinutes < COOLDOWN_MINUTES) {
+                return res.status(400).json({ error: `You must wait at least ${COOLDOWN_MINUTES} minute(s) before marking the next shift.` });
+            }
+        }
+
+        const currentShift = todaysAtts.length + 1;
+
         const newAttendance = new Attendance({
             teamId,
             workerId,
+            shift: currentShift,
             status: 'present'
         });
 
@@ -234,7 +290,8 @@ const markAttendance = async (req, res) => {
         return res.json({
             message: "Attendance marked successfully",
             person,
-            attendance: newAttendance
+            attendance: newAttendance,
+            shift: currentShift
         });
 
     } catch (error) {
