@@ -180,7 +180,15 @@ const Home = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground leading-tight">{activity.action}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(activity.time), { addSuffix: true })}
+                          {(() => {
+                            try {
+                              const d = new Date(activity.time);
+                              if (isNaN(d.getTime())) return "recently";
+                              return formatDistanceToNow(d, { addSuffix: true });
+                            } catch (e) {
+                              return "recently";
+                            }
+                          })()}
                         </p>
                       </div>
                     </div>
